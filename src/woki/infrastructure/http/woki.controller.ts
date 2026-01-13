@@ -12,6 +12,7 @@ import {
   BadRequestException,
   NotFoundException,
   ConflictException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { BookingQueryService } from '../../application/services/booking-query.service';
@@ -100,6 +101,10 @@ export class WokiController {
         throw error;
       }
 
+      if (error instanceof UnprocessableEntityException) {
+        throw error;
+      }
+
       if (error.name === 'ZodError') {
         throw new BadRequestException({
           error: 'invalid_input',
@@ -168,6 +173,10 @@ export class WokiController {
       }
 
       if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      if (error instanceof UnprocessableEntityException) {
         throw error;
       }
 

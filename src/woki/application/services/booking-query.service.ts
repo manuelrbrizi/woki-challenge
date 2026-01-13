@@ -23,6 +23,7 @@ import {
   ListBookingsQuery,
   ListBookingsResponse,
 } from '../dto/list-bookings.dto';
+import { validateWindowWithinServiceHours } from '../utils/window-validation.util';
 
 @Injectable()
 export class BookingQueryService {
@@ -98,6 +99,15 @@ export class BookingQueryService {
     // Get service windows for the restaurant
     const serviceWindows =
       await this.serviceWindowRepository.findByRestaurantId(restaurant.id);
+
+    // Validate windowStart/windowEnd is within service windows (if provided)
+    if (query.windowStart && query.windowEnd) {
+      validateWindowWithinServiceHours(
+        query.windowStart,
+        query.windowEnd,
+        serviceWindows,
+      );
+    }
 
     // Find candidates
     const candidates = this.findCandidates(

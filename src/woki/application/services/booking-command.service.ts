@@ -30,6 +30,7 @@ import {
   CreateBookingResponse,
 } from '../dto/create-booking.dto';
 import { BookingQueryService } from './booking-query.service';
+import { validateWindowWithinServiceHours } from '../utils/window-validation.util';
 
 @Injectable()
 export class BookingCommandService {
@@ -207,6 +208,15 @@ export class BookingCommandService {
         request.restaurantId,
       );
 
+    // Validate windowStart/windowEnd is within service windows (if provided)
+    if (request.windowStart && request.windowEnd) {
+      validateWindowWithinServiceHours(
+        request.windowStart,
+        request.windowEnd,
+        serviceWindows,
+      );
+    }
+
     // Use query service to find all candidates
     const candidates = this.bookingQueryService.findCandidates(
       tables,
@@ -269,7 +279,7 @@ export class BookingCommandService {
   ): string {
     const sortedTableIds = [...tableIds].sort().join('+');
     const startStr = start.toISOString();
-    return `${sectorId}|${sortedTableIds}|${startStr}`;
+    return `${restaurantId}|${sectorId}|${sortedTableIds}|${startStr}`;
   }
 
   private toResponse(booking: Booking): CreateBookingResponse {
