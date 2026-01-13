@@ -390,15 +390,4 @@ export class BookingQueryService {
 
     return combinations;
   }
-
-  private powerSet<T>(array: T[]): T[][] {
-    const result: T[][] = [[]];
-
-    for (const element of array) {
-      const newSubsets = result.map((subset) => [...subset, element]);
-      result.push(...newSubsets);
-    }
-
-    return result.filter((subset) => subset.length > 0);
-  }
 }
