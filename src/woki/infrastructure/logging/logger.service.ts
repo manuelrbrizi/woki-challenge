@@ -33,7 +33,11 @@ export class LoggerService {
     this.logger.info(context);
   }
 
-  error(message: string, error?: Error, context?: Record<string, unknown>): void {
+  error(
+    message: string,
+    error?: Error,
+    context?: Record<string, unknown>,
+  ): void {
     this.logger.error({ err: error, ...context }, message);
   }
 
@@ -45,4 +49,3 @@ export class LoggerService {
     this.logger.debug(context, message);
   }
 }
-

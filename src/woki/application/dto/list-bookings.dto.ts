@@ -21,4 +21,3 @@ export interface BookingItem {
   end: string; // ISO 8601
   status: string;
 }
-

@@ -5,4 +5,3 @@ export const SECTOR_REPOSITORY = Symbol('SectorRepository');
 export const TABLE_REPOSITORY = Symbol('TableRepository');
 export const BOOKING_REPOSITORY = Symbol('BookingRepository');
 export const SERVICE_WINDOW_REPOSITORY = Symbol('ServiceWindowRepository');
-

@@ -19,14 +19,14 @@ describe('LockManagerService', () => {
   describe('lock acquisition and release', () => {
     it('should acquire and release a lock', async () => {
       const lockKey = 'test-lock-1';
-      
+
       const releaseLock = await service.acquire(lockKey);
       expect(releaseLock).toBeDefined();
       expect(typeof releaseLock).toBe('function');
 
       // Release the lock
       releaseLock();
-      
+
       // Should be able to acquire again immediately
       const releaseLock2 = await service.acquire(lockKey);
       expect(releaseLock2).toBeDefined();
@@ -100,7 +100,7 @@ describe('LockManagerService', () => {
 
     it('should allow sequential locks on the same key', async () => {
       const lockKey = 'sequential-lock';
-      
+
       // First lock
       const release1 = await service.acquire(lockKey);
       release1();
@@ -149,7 +149,7 @@ describe('LockManagerService', () => {
       expect(executionOrder).toContain('lock1-released');
       expect(executionOrder).toContain('lock2-acquired');
       expect(executionOrder).toContain('lock3-acquired');
-      
+
       // lock2 should come before lock3
       const lock2Index = executionOrder.indexOf('lock2-acquired');
       const lock3Index = executionOrder.indexOf('lock3-acquired');
@@ -157,4 +157,3 @@ describe('LockManagerService', () => {
     });
   });
 });
-

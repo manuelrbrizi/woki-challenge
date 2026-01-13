@@ -7,4 +7,3 @@ export interface ComboCandidate {
   interval: TimeInterval;
   kind: 'single' | 'combo';
 }
-

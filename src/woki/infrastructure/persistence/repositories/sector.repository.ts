@@ -19,4 +19,3 @@ export class SectorRepository implements ISectorRepository {
     return this.repository.find({ where: { restaurantId } });
   }
 }
-

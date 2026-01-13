@@ -6,8 +6,14 @@ export const DiscoverSeatsQuerySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   partySize: z.coerce.number().int().positive(),
   duration: z.coerce.number().int().positive(),
-  windowStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-  windowEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  windowStart: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .optional(),
+  windowEnd: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .optional(),
   limit: z.coerce.number().int().positive().optional(),
 });
 
@@ -25,4 +31,3 @@ export interface Candidate {
   start: string; // ISO 8601
   end: string; // ISO 8601
 }
-

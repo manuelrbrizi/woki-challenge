@@ -23,4 +23,3 @@ export class Restaurant {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

@@ -30,14 +30,14 @@ export class IdempotencyService {
 
     // Verify payload matches (using hash)
     const payloadHash = this.hashPayload(payload);
-    
+
     // If payloads don't match, the idempotency key is being reused with different data
     if (payloadHash !== entry.payloadHash) {
       // In production, you might want to throw an error or return null
       // For now, we'll return null to indicate the key doesn't match
       return null;
     }
-    
+
     return entry.booking;
   }
 
@@ -54,9 +54,7 @@ export class IdempotencyService {
   }
 
   private hashPayload(payload: unknown): string {
-    return createHash('sha256')
-      .update(JSON.stringify(payload))
-      .digest('hex');
+    return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
   }
 
   private cleanup(): void {
@@ -68,4 +66,3 @@ export class IdempotencyService {
     }
   }
 }
-

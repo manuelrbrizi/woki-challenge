@@ -26,4 +26,3 @@ export class ServiceWindow {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

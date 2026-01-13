@@ -6,8 +6,14 @@ export const CreateBookingSchema = z.object({
   partySize: z.number().int().positive(),
   durationMinutes: z.number().int().positive(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  windowStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-  windowEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  windowStart: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .optional(),
+  windowEnd: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .optional(),
 });
 
 export type CreateBookingRequest = z.infer<typeof CreateBookingSchema>;
@@ -25,4 +31,3 @@ export interface CreateBookingResponse {
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
 }
-

@@ -18,4 +18,3 @@ export class ServiceWindowRepository implements IServiceWindowRepository {
     });
   }
 }
-

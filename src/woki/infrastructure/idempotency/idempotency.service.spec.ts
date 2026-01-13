@@ -91,7 +91,7 @@ describe('IdempotencyService', () => {
       expect(result2).toBe(result3);
     });
 
-    it('should return null for expired entries', async () => {
+    it('should return null for expired entries', () => {
       const idempotencyKey = 'test-key-expired';
       const requestPayload = {};
 
@@ -145,4 +145,3 @@ describe('IdempotencyService', () => {
     });
   });
 });
-

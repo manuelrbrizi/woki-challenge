@@ -30,7 +30,13 @@ import {
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Restaurant, Sector, Table, Booking, ServiceWindow]),
+    TypeOrmModule.forFeature([
+      Restaurant,
+      Sector,
+      Table,
+      Booking,
+      ServiceWindow,
+    ]),
   ],
   controllers: [WokiController],
   providers: [
@@ -77,4 +83,3 @@ import {
   exports: [SeedService],
 })
 export class WokiModule {}
-

@@ -5,4 +5,3 @@ export interface TableRepository {
   findBySectorId(sectorId: string): Promise<Table[]>;
   findByIds(ids: string[]): Promise<Table[]>;
 }
-

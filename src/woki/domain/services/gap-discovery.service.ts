@@ -3,8 +3,8 @@ import { Booking } from '../entities/booking.entity';
 import { BookingStatus } from '../types/booking-status.enum';
 import { TimeInterval } from '../types/time-interval.type';
 import { Restaurant } from '../entities/restaurant.entity';
-import { startOfDay, addMinutes } from 'date-fns';
-import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
+import { startOfDay } from 'date-fns';
+import { zonedTimeToUtc } from 'date-fns-tz';
 
 @Injectable()
 export class GapDiscoveryService {
@@ -57,7 +57,6 @@ export class GapDiscoveryService {
         tableBookings,
         window,
         durationMinutes,
-        restaurant.timezone,
       );
       gaps.push(...windowGaps);
     }
@@ -179,7 +178,6 @@ export class GapDiscoveryService {
     bookings: Array<{ start: Date; end: Date }>,
     window: TimeInterval,
     durationMinutes: number,
-    timezone: string,
   ): TimeInterval[] {
     // 1. Normalize existing CONFIRMED bookings to [start, end) and sort
     const normalizedBookings = bookings
@@ -193,7 +191,7 @@ export class GapDiscoveryService {
     // 2. Add sentinels at window start/end
     const sentinels: TimeInterval[] = [
       { start: window.start, end: window.start }, // Sentinel at window start
-      { start: window.end, end: window.end },      // Sentinel at window end
+      { start: window.end, end: window.end }, // Sentinel at window end
     ];
 
     // 3. Combine sentinels and bookings, then sort
@@ -204,7 +202,7 @@ export class GapDiscoveryService {
     // 4. Walk adjacent pairs → gaps (prevEnd, nextStart)
     const gaps: TimeInterval[] = [];
     for (let i = 0; i < allEvents.length - 1; i++) {
-      const prevEnd = allEvents[i].end;      // End of previous booking/sentinel
+      const prevEnd = allEvents[i].end; // End of previous booking/sentinel
       const nextStart = allEvents[i + 1].start; // Start of next booking/sentinel
 
       // If there's a gap between prevEnd and nextStart
@@ -249,12 +247,9 @@ export class GapDiscoveryService {
     // Find the overlap between two intervals
     // Start of overlap = max(interval1.start, interval2.start)
     // End of overlap = min(interval1.end, interval2.end)
-    const start = interval1.start > interval2.start
-      ? interval1.start
-      : interval2.start;
-    const end = interval1.end < interval2.end
-      ? interval1.end
-      : interval2.end;
+    const start =
+      interval1.start > interval2.start ? interval1.start : interval2.start;
+    const end = interval1.end < interval2.end ? interval1.end : interval2.end;
 
     // If start < end, there's an overlap
     if (start < end) {
@@ -266,7 +261,8 @@ export class GapDiscoveryService {
   }
 
   private getDurationMinutes(interval: TimeInterval): number {
-    return Math.floor((interval.end.getTime() - interval.start.getTime()) / (1000 * 60));
+    return Math.floor(
+      (interval.end.getTime() - interval.start.getTime()) / (1000 * 60),
+    );
   }
 }
-

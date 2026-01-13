@@ -46,4 +46,3 @@ export class Booking {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

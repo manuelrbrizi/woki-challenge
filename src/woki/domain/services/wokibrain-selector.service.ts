@@ -5,12 +5,12 @@ import { ComboCandidate } from '../types/combo-candidate.type';
 export class WokiBrainSelectorService {
   /**
    * Deterministic selection strategy for choosing among valid candidates.
-   * 
+   *
    * Selection criteria (in order of priority):
    * 1. Prefer single tables over combos
    * 2. Among singles: prefer earlier slots
    * 3. Among combos: prefer fewer tables, then earlier slots
-   * 
+   *
    * This ensures deterministic results: same input → same output.
    */
   selectBestCandidate(candidates: ComboCandidate[]): ComboCandidate | null {
@@ -46,4 +46,3 @@ export class WokiBrainSelectorService {
     return null;
   }
 }
-

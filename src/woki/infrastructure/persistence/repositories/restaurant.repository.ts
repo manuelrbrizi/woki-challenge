@@ -15,4 +15,3 @@ export class RestaurantRepository implements IRestaurantRepository {
     return this.repository.findOne({ where: { id } });
   }
 }
-

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, MoreThanOrEqual, LessThan } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { Booking } from '../../../domain/entities/booking.entity';
 import { BookingStatus } from '../../../domain/types/booking-status.enum';
 import { BookingRepository as IBookingRepository } from '../../../ports/repositories/booking.repository.interface';
@@ -72,4 +72,3 @@ export class BookingRepository implements IBookingRepository {
     await this.repository.delete(id);
   }
 }
-

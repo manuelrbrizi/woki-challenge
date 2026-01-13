@@ -56,7 +56,9 @@ export class BookingCommandService {
   ): Promise<CreateBookingResponse> {
     // Validate duration is multiple of 15
     if (request.durationMinutes % 15 !== 0) {
-      throw new BadRequestException('Duration must be a multiple of 15 minutes');
+      throw new BadRequestException(
+        'Duration must be a multiple of 15 minutes',
+      );
     }
 
     // Validate duration range
@@ -129,7 +131,8 @@ export class BookingCommandService {
       if (error instanceof Error && error.message === 'Lock timeout') {
         throw new ConflictException({
           error: 'table_locked',
-          detail: 'Table is currently being booked by another request. Please try again.',
+          detail:
+            'Table is currently being booked by another request. Please try again.',
         });
       }
       throw error;
@@ -199,12 +202,13 @@ export class BookingCommandService {
     );
 
     // Get service windows for the restaurant
-    const serviceWindows = await this.serviceWindowRepository.findByRestaurantId(
-      request.restaurantId,
-    );
+    const serviceWindows =
+      await this.serviceWindowRepository.findByRestaurantId(
+        request.restaurantId,
+      );
 
     // Use query service to find all candidates
-    const candidates = await this.bookingQueryService.findCandidates(
+    const candidates = this.bookingQueryService.findCandidates(
       tables,
       bookings,
       date,
@@ -284,4 +288,3 @@ export class BookingCommandService {
     };
   }
 }
-

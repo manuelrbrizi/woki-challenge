@@ -26,4 +26,3 @@ export class TableRepository implements ITableRepository {
     return this.repository.find({ where: { id: In(ids) } });
   }
 }
-
