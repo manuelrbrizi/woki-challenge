@@ -1,21 +1,13 @@
 import 'dotenv/config';
-import {
-  ClassSerializerInterceptor,
-  ValidationPipe,
-  VersioningType,
-} from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { NestFactory, Reflector } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { useContainer } from 'class-validator';
 import { AppModule } from './app.module';
-import validationOptions from './utils/validation-options';
 import { AllConfigType } from './config/config.type';
-import { ResolvePromisesInterceptor } from './utils/serializer.interceptor';
+import { SeedService } from './woki/infrastructure/persistence/seed.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { cors: true });
-  useContainer(app.select(AppModule), { fallbackOnErrors: true });
   const configService = app.get(ConfigService<AllConfigType>);
 
   app.enableShutdownHooks();
@@ -25,35 +17,29 @@ async function bootstrap() {
       exclude: ['/'],
     },
   );
-  app.enableVersioning({
-    type: VersioningType.URI,
-  });
-  app.useGlobalPipes(new ValidationPipe(validationOptions));
-  app.useGlobalInterceptors(
-    // ResolvePromisesInterceptor is used to resolve promises in responses because class-transformer can't do it
-    // https://github.com/typestack/class-transformer/issues/549
-    new ResolvePromisesInterceptor(),
-    new ClassSerializerInterceptor(app.get(Reflector)),
-  );
 
+  // Swagger documentation
   const options = new DocumentBuilder()
-    .setTitle('API')
-    .setDescription('API docs')
+    .setTitle('WokiBrain API')
+    .setDescription('WokiBrain - A compact booking engine for restaurants')
     .setVersion('1.0')
-    .addBearerAuth()
-    .addGlobalParameters({
-      in: 'header',
-      required: false,
-      name: process.env.APP_HEADER_LANGUAGE || 'x-custom-lang',
-      schema: {
-        example: 'en',
-      },
-    })
     .build();
 
   const document = SwaggerModule.createDocument(app, options);
   SwaggerModule.setup('docs', app, document);
 
-  await app.listen(configService.getOrThrow('app.port', { infer: true }));
+  // Seed data on startup
+  try {
+    const seedService = app.get(SeedService);
+    await seedService.seed();
+    console.log('Database seeded successfully');
+  } catch (error) {
+    console.error('Failed to seed database:', error);
+  }
+
+  const port = configService.getOrThrow('app.port', { infer: true });
+  await app.listen(port);
+  console.log(`WokiBrain API is running on: http://localhost:${port}`);
+  console.log(`Swagger documentation: http://localhost:${port}/docs`);
 }
 void bootstrap();

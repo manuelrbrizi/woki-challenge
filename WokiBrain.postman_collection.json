@@ -1,0 +1,395 @@
+{
+	"info": {
+		"_postman_id": "wokibrain-api-collection",
+		"name": "WokiBrain API",
+		"description": "WokiBrain - A compact booking engine for restaurants",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Discover Seats",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/woki/discover?restaurantId=R1&sectorId=S1&date=2025-10-22&partySize=5&duration=90",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"woki",
+						"discover"
+					],
+					"query": [
+						{
+							"key": "restaurantId",
+							"value": "R1",
+							"description": "Restaurant ID"
+						},
+						{
+							"key": "sectorId",
+							"value": "S1",
+							"description": "Sector ID"
+						},
+						{
+							"key": "date",
+							"value": "2025-10-22",
+							"description": "Date in YYYY-MM-DD format"
+						},
+						{
+							"key": "partySize",
+							"value": "5",
+							"description": "Number of people"
+						},
+						{
+							"key": "duration",
+							"value": "90",
+							"description": "Duration in minutes (multiple of 15)"
+						},
+						{
+							"key": "windowStart",
+							"value": "20:00",
+							"description": "Optional: Start time in HH:mm format",
+							"disabled": true
+						},
+						{
+							"key": "windowEnd",
+							"value": "23:45",
+							"description": "Optional: End time in HH:mm format",
+							"disabled": true
+						},
+						{
+							"key": "limit",
+							"value": "10",
+							"description": "Optional: Maximum number of candidates",
+							"disabled": true
+						}
+					]
+				},
+				"description": "Discover available seats for a party. Returns candidates (single tables or combos) that can accommodate the party size for the specified duration."
+			},
+			"response": []
+		},
+		{
+			"name": "Discover Seats (with window)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/woki/discover?restaurantId=R1&sectorId=S1&date=2025-10-22&partySize=5&duration=90&windowStart=20:00&windowEnd=23:45",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"woki",
+						"discover"
+					],
+					"query": [
+						{
+							"key": "restaurantId",
+							"value": "R1"
+						},
+						{
+							"key": "sectorId",
+							"value": "S1"
+						},
+						{
+							"key": "date",
+							"value": "2025-10-22"
+						},
+						{
+							"key": "partySize",
+							"value": "5"
+						},
+						{
+							"key": "duration",
+							"value": "90"
+						},
+						{
+							"key": "windowStart",
+							"value": "20:00"
+						},
+						{
+							"key": "windowEnd",
+							"value": "23:45"
+						}
+					]
+				},
+				"description": "Discover seats within a specific time window"
+			},
+			"response": []
+		},
+		{
+			"name": "Create Booking",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Idempotency-Key",
+						"value": "{{$randomUUID}}",
+						"description": "Optional: Ensures idempotent operations (60s TTL)"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"restaurantId\": \"R1\",\n  \"sectorId\": \"S1\",\n  \"partySize\": 5,\n  \"durationMinutes\": 90,\n  \"date\": \"2025-10-22\",\n  \"windowStart\": \"20:00\",\n  \"windowEnd\": \"23:45\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/woki/bookings",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"woki",
+						"bookings"
+					]
+				},
+				"description": "Create a new booking. The system will automatically select the best available table(s) using WokiBrain selection strategy."
+			},
+			"response": []
+		},
+		{
+			"name": "Create Booking (without window)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Idempotency-Key",
+						"value": "{{$randomUUID}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"restaurantId\": \"R1\",\n  \"sectorId\": \"S1\",\n  \"partySize\": 3,\n  \"durationMinutes\": 60,\n  \"date\": \"2025-10-22\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/woki/bookings",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"woki",
+						"bookings"
+					]
+				},
+				"description": "Create booking without specifying a time window (uses restaurant service windows)"
+			},
+			"response": []
+		},
+		{
+			"name": "List Bookings for Day",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/woki/bookings/day?restaurantId=R1&sectorId=S1&date=2025-10-22",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"woki",
+						"bookings",
+						"day"
+					],
+					"query": [
+						{
+							"key": "restaurantId",
+							"value": "R1",
+							"description": "Restaurant ID"
+						},
+						{
+							"key": "sectorId",
+							"value": "S1",
+							"description": "Sector ID"
+						},
+						{
+							"key": "date",
+							"value": "2025-10-22",
+							"description": "Date in YYYY-MM-DD format"
+						}
+					]
+				},
+				"description": "List all bookings for a specific restaurant, sector, and date"
+			},
+			"response": []
+		},
+		{
+			"name": "Cancel Booking",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/woki/bookings/:id",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"woki",
+						"bookings",
+						":id"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "BK_12345678",
+							"description": "Booking ID"
+						}
+					]
+				},
+				"description": "Cancel a booking by ID. Returns 204 No Content on success."
+			},
+			"response": []
+		},
+		{
+			"name": "Examples",
+			"item": [
+				{
+					"name": "Discover for party of 2",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/woki/discover?restaurantId=R1&sectorId=S1&date=2025-10-22&partySize=2&duration=75",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"woki",
+								"discover"
+							],
+							"query": [
+								{
+									"key": "restaurantId",
+									"value": "R1"
+								},
+								{
+									"key": "sectorId",
+									"value": "S1"
+								},
+								{
+									"key": "date",
+									"value": "2025-10-22"
+								},
+								{
+									"key": "partySize",
+									"value": "2"
+								},
+								{
+									"key": "duration",
+									"value": "75"
+								}
+							]
+						},
+						"description": "Discover seats for a party of 2 people for 75 minutes"
+					},
+					"response": []
+				},
+				{
+					"name": "Discover for party of 6 (needs combo)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/woki/discover?restaurantId=R1&sectorId=S1&date=2025-10-22&partySize=6&duration=90",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"woki",
+								"discover"
+							],
+							"query": [
+								{
+									"key": "restaurantId",
+									"value": "R1"
+								},
+								{
+									"key": "sectorId",
+									"value": "S1"
+								},
+								{
+									"key": "date",
+									"value": "2025-10-22"
+								},
+								{
+									"key": "partySize",
+									"value": "6"
+								},
+								{
+									"key": "duration",
+									"value": "90"
+								}
+							]
+						},
+						"description": "Discover seats for a party of 6 - will likely need a combo of tables"
+					},
+					"response": []
+				},
+				{
+					"name": "Create booking for party of 4",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Idempotency-Key",
+								"value": "test-booking-4-people"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"restaurantId\": \"R1\",\n  \"sectorId\": \"S1\",\n  \"partySize\": 4,\n  \"durationMinutes\": 90,\n  \"date\": \"2025-10-22\",\n  \"windowStart\": \"12:00\",\n  \"windowEnd\": \"16:00\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/woki/bookings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"woki",
+								"bookings"
+							]
+						},
+						"description": "Create a booking for 4 people during lunch hours"
+					},
+					"response": []
+				}
+			],
+			"description": "Example requests with different scenarios"
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000/api",
+			"type": "string"
+		}
+	]
+}
+

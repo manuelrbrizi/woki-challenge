@@ -1,73 +1,223 @@
-# NestJS REST API boilerplate 🇺🇦
+# WokiBrain
 
-[![image](https://github.com/brocoders/nestjs-boilerplate/assets/72293912/197da43e-02f4-4895-8d3e-b7a42a591c26)](https://github.com/new?template_name=nestjs-boilerplate&template_owner=brocoders)
-
-![github action status](https://github.com/brocoders/nestjs-boilerplate/actions/workflows/docker-e2e.yml/badge.svg)
-[![renovate](https://img.shields.io/badge/renovate-enabled-%231A1F6C?logo=renovatebot)](https://app.renovatebot.com/dashboard)
-[![Static Badge](https://img.shields.io/badge/supported_by-brocoders-d91965?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB3aWR0aD0iMTMwIiBoZWlnaHQ9IjE4NyIgdmlld0JveD0iMCAwIDEzMCAxODciIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI%2BCjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF83NzExXzQ4OTEpIj4KPHBhdGggZD0iTTc1Ljk5NjcgNDUuNzUwNkM2NS4xMDg5IDQ2Ljg2MSA1Ny45MjMgNTguNDA5NyA2Mi4yNzgxIDY4Ljg0OEwxMDguNDQyIDE4N0w3My42MDEzIDE1NS4wMTlIMzQuODQwOUMyMC42ODY4IDE1NS4wMTkgOS4zNjM0OSAxNDMuNDcgOS4zNjM0OSAxMjkuMDM0Vjk0LjYxMDVDOS4zNjM0OSA5Mi4xNjc1IDguNDkyNDYgODkuNzI0NSA2Ljc1MDQyIDg3Ljk0NzdMMCA4MS4wNjNMNi43NTA0MiA3NC4xNzgxQzguNDkyNDYgNzIuNDAxNCA5LjM2MzQ5IDY5Ljk1ODQgOS4zNjM0OSA2Ny41MTU0VjMxLjA5MjZDOS4zNjM0OSAxMy43Njk2IDIzLjA4MjEgMCAzOS44NDkyIDBINTguMTQwN0w3NS45OTY3IDQ1Ljc1MDZaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMTI1LjY0NiAxMTIuMzc4Vjk0LjgzMjdDMTI1LjY0NiA5My43MjIyIDEyNi4wODEgOTIuNjExOCAxMjYuOTUyIDkxLjcyMzRMMTMwLjAwMSA4OC4zOTIxTDEyNi45NTIgODUuMDYwN0MxMjYuMDgxIDg0LjE3MjQgMTI1LjY0NiA4My4wNjE5IDEyNS42NDYgODEuOTUxNFY2OS43MzY1QzEyNS42NDYgNTYuNDExMSAxMTQuOTc2IDQ1Ljc1MDcgMTAyLjEyOCA0NS43NTA3SDc1Ljk5NzNMMTA1LjYxMiAxMzAuODExQzEwNS42MTIgMTMwLjgxMSAxMTAuNjIgMTMwLjgxMSAxMTAuODM4IDEzMC44MTFDMTE5LjExMyAxMjkuMDM1IDEyNS42NDYgMTIxLjQ4NCAxMjUuNjQ2IDExMi4zNzhaIiBmaWxsPSJ3aGl0ZSIvPgo8L2c%2BCjxkZWZzPgo8Y2xpcFBhdGggaWQ9ImNsaXAwXzc3MTFfNDg5MSI%2BCjxyZWN0IHdpZHRoPSIxMzAiIGhlaWdodD0iMTg3IiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM%2BCjwvc3ZnPgo%3D&logoColor=d91965)](https://brocoders.com/)
-[![Discord Badge](https://img.shields.io/badge/discord-NodeJS_boilerplate-d91965?style=flat&labelColor=5866f2&logo=discord&logoColor=white&link=https://discord.com/channels/520622812742811698/1197293125434093701)](https://discord.com/channels/520622812742811698/1197293125434093701)
-
-<br />
-<p align="center"><a href="https://discord.com/channels/520622812742811698/1197293125434093701"><img src="https://github.com/brocoders/nestjs-boilerplate/assets/72293912/c9d5fbf0-b56d-46b5-bb30-f96f44764bae" width="300"/></a></p>
-<br />
-
-## Description <!-- omit in toc -->
-
-NestJS REST API boilerplate for a typical project
-
-[Full documentation here](/docs/readme.md)
-
-Demo: <https://nestjs-boilerplate-test.herokuapp.com/docs>
-
-A fully compatible frontend boilerplate: <https://github.com/brocoders/extensive-react-boilerplate>
-
-Belongs to the [bc boilerplates](https://bcboilerplates.com/) ecosystem
-
-<https://github.com/user-attachments/assets/a66f114a-c714-4036-8eeb-20cbf04ae985>
-
-## Table of Contents <!-- omit in toc -->
-
-- [Features](#features)
-- [Contributors](#contributors)
-- [Support](#support)
+A compact booking engine for restaurants that discovers **when** and **how** to seat a party using **single tables or table combinations**.
 
 ## Features
 
-- [x] Database. Support [TypeORM](https://www.npmjs.com/package/typeorm) and [Mongoose](https://www.npmjs.com/package/mongoose).
-- [x] Seeding.
-- [x] Config Service ([@nestjs/config](https://www.npmjs.com/package/@nestjs/config)).
-- [x] Mailing ([nodemailer](https://www.npmjs.com/package/nodemailer)).
-- [x] Sign in and sign up via email.
-- [x] Social sign in (Apple, Facebook, Google).
-- [x] Admin and User roles.
-- [x] Internationalization/Translations (I18N) ([nestjs-i18n](https://www.npmjs.com/package/nestjs-i18n)).
-- [x] File uploads. Support local and Amazon S3 drivers.
-- [x] Swagger.
-- [x] E2E and units tests.
-- [x] Docker.
-- [x] CI (Github Actions).
+- Manages **Sectors** containing **Tables** with capacity ranges
+- Accepts **variable durations** (multiples of 15 minutes, 30-180 minutes)
+- Selects slots and seating configurations (single table **or** combos of any size) using a deterministic selection strategy
+- Enforces basic **concurrency** (no double booking) and **idempotency** for create operations
+- Exposes a **minimal API** (3 endpoints) to discover candidates, create a booking, and list the day's bookings
 
-## Contributors
+## Architecture
 
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-<table>
-  <tbody>
-    <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Shchepotin"><img src="https://avatars.githubusercontent.com/u/6001723?v=4?s=100" width="100px;" alt="Vladyslav Shchepotin"/><br /><sub><b>Vladyslav Shchepotin</b></sub></a><br /><a href="#maintenance-Shchepotin" title="Maintenance">🚧</a> <a href="#doc-Shchepotin" title="Documentation">📖</a> <a href="#code-Shchepotin" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/SergeiLomako"><img src="https://avatars.githubusercontent.com/u/31205374?v=4?s=100" width="100px;" alt="SergeiLomako"/><br /><sub><b>SergeiLomako</b></sub></a><br /><a href="#code-SergeiLomako" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/ElenVlass"><img src="https://avatars.githubusercontent.com/u/72293912?v=4?s=100" width="100px;" alt="Elena Vlasenko"/><br /><sub><b>Elena Vlasenko</b></sub></a><br /><a href="#doc-ElenVlass" title="Documentation">📖</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="http://brocoders.com"><img src="https://avatars.githubusercontent.com/u/226194?v=4?s=100" width="100px;" alt="Rodion"/><br /><sub><b>Rodion</b></sub></a><br /><a href="#business-sars" title="Business development">💼</a></td>
-    </tr>
-  </tbody>
-</table>
+This project follows **Hexagonal Architecture** (Ports and Adapters) with clear separation of concerns:
 
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
+- **Domain Layer**: Core business logic, entities, and domain services
+- **Application Layer**: Use cases and DTOs
+- **Infrastructure Layer**: TypeORM repositories, HTTP controllers, logging
+- **Ports**: Repository interfaces
 
-<!-- ALL-CONTRIBUTORS-LIST:END -->
+## Time Model
 
-## Support
+- **Grid**: Fixed 15-minute granularity
+- **Durations**: Multiples of 15 minutes (minimum 30, maximum 180 minutes)
+- **Intervals**: `[start, end)` (end exclusive); adjacent bookings do not conflict
+- **Timezone**: IANA per Restaurant (e.g., `America/Argentina/Buenos_Aires`)
+- **Service windows**: Optional array per restaurant/sector: `{ start: "HH:mm", end: "HH:mm" }`
 
-If you seek consulting, support, or wish to collaborate, please contact us via [boilerplates@brocoders.com](mailto:boilerplates@brocoders.com). For any inquiries regarding boilerplates, feel free to ask on [GitHub Discussions](https://github.com/brocoders/nestjs-boilerplate/discussions) or [Discord](https://discord.com/channels/520622812742811698/1197293125434093701).
+## Combo Capacity Heuristic
+
+For table combinations, the capacity is calculated as:
+- **Min capacity**: Sum of all table `minSize` values
+- **Max capacity**: Sum of all table `maxSize` values
+
+**Rationale**: This approach is simple, predictable, and allows flexible seating. It assumes tables can be combined without significant space penalties.
+
+## WokiBrain Selection Strategy
+
+The selection strategy is deterministic and prioritizes:
+
+1. **Single tables** over combos
+2. Among singles: **earlier slots** are preferred
+3. Among combos: **fewer tables** first, then **earlier slots**
+
+This ensures that given the same inputs, the system will always return the same result.
+
+## API Endpoints
+
+### 1. Discover Seats
+
+**GET** `/woki/discover`
+
+Query parameters:
+- `restaurantId` (required)
+- `sectorId` (required)
+- `date` (required, format: YYYY-MM-DD)
+- `partySize` (required, positive integer)
+- `duration` (required, positive integer, multiple of 15)
+- `windowStart` (optional, format: HH:mm)
+- `windowEnd` (optional, format: HH:mm)
+- `limit` (optional, positive integer)
+
+**Response (200)**:
+```json
+{
+  "slotMinutes": 15,
+  "durationMinutes": 90,
+  "candidates": [
+    {
+      "kind": "single",
+      "tableIds": ["T4"],
+      "start": "2025-10-22T20:00:00-03:00",
+      "end": "2025-10-22T21:30:00-03:00"
+    },
+    {
+      "kind": "combo",
+      "tableIds": ["T2", "T3"],
+      "start": "2025-10-22T20:15:00-03:00",
+      "end": "2025-10-22T21:45:00-03:00"
+    }
+  ]
+}
+```
+
+**Error Responses**:
+- `400`: Invalid input
+- `404`: Restaurant or sector not found
+- `409`: No capacity available
+- `422`: Outside service window
+
+### 2. Create Booking
+
+**POST** `/woki/bookings`
+
+**Headers**:
+- `Idempotency-Key` (optional): Ensures idempotent operations (60s TTL)
+
+**Request Body**:
+```json
+{
+  "restaurantId": "R1",
+  "sectorId": "S1",
+  "partySize": 5,
+  "durationMinutes": 90,
+  "date": "2025-10-22",
+  "windowStart": "20:00",
+  "windowEnd": "23:45"
+}
+```
+
+**Response (201)**:
+```json
+{
+  "id": "BK_001",
+  "restaurantId": "R1",
+  "sectorId": "S1",
+  "tableIds": ["T4"],
+  "partySize": 5,
+  "start": "2025-10-22T20:00:00-03:00",
+  "end": "2025-10-22T21:30:00-03:00",
+  "durationMinutes": 90,
+  "status": "CONFIRMED",
+  "createdAt": "2025-10-22T19:50:21-03:00",
+  "updatedAt": "2025-10-22T19:50:21-03:00"
+}
+```
+
+**Error Responses**:
+- `400`: Invalid input
+- `404`: Restaurant or sector not found
+- `409`: No capacity available
+
+### 3. List Bookings for a Day
+
+**GET** `/woki/bookings/day`
+
+Query parameters:
+- `restaurantId` (required)
+- `sectorId` (required)
+- `date` (required, format: YYYY-MM-DD)
+
+**Response (200)**:
+```json
+{
+  "date": "2025-10-22",
+  "items": [
+    {
+      "id": "BK_001",
+      "tableIds": ["T4"],
+      "partySize": 5,
+      "start": "2025-10-22T20:00:00-03:00",
+      "end": "2025-10-22T21:30:00-03:00",
+      "status": "CONFIRMED"
+    }
+  ]
+}
+```
+
+### 4. Cancel Booking (Optional)
+
+**DELETE** `/woki/bookings/:id`
+
+**Response (204)**: No content
+
+## Installation
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Create a `.env` file (see `.env.example`)
+
+3. Start the application:
+```bash
+npm run start:dev
+```
+
+The application will:
+- Create a fresh SQLite database on each startup
+- Seed example data (restaurant R1, sector S1, 5 tables, 1 existing booking)
+- Start the server on port 3000 (or the port specified in `.env`)
+
+## Database
+
+The application uses **SQLite** with TypeORM. The database file (`woki.db`) is created in the project root. On each startup, the schema is dropped and recreated with fresh seed data.
+
+## Testing
+
+Run tests:
+```bash
+npm test
+```
+
+Run E2E tests:
+```bash
+npm run test:e2e
+```
+
+## Swagger Documentation
+
+Once the application is running, visit:
+- http://localhost:3000/docs
+
+## Concurrency & Idempotency
+
+- **Locking**: Uses in-memory locks with composite keys (`restaurantId|sectorId|tableIds|start`)
+- **Idempotency**: In-memory cache with 60-second TTL, keyed by `Idempotency-Key` header
+- **Atomic Operations**: Bookings are created within transactions to ensure consistency
+
+## Error Handling
+
+| Status | Error Code | Description |
+|--------|------------|-------------|
+| 400 | `invalid_input` | Non-grid times/durations, bad formats, negative party size |
+| 404 | `not_found` | Restaurant/sector not found |
+| 409 | `no_capacity` | No single nor combo fits on the requested day/window |
+| 422 | `outside_service_window` | Specified window lies outside service hours |
+
+## License
+
+MIT
