@@ -77,7 +77,7 @@ export class BookingCommandService {
 
     // Check idempotency
     if (idempotencyKey) {
-      const cached = this.idempotencyService.get(idempotencyKey, request);
+      const cached = await this.idempotencyService.get(idempotencyKey, request);
       if (cached) {
         return this.toResponse(cached);
       }
@@ -262,7 +262,11 @@ export class BookingCommandService {
 
       // Store idempotency key
       if (idempotencyKey) {
-        this.idempotencyService.set(idempotencyKey, savedBooking, request);
+        await this.idempotencyService.set(
+          idempotencyKey,
+          savedBooking,
+          request,
+        );
       }
 
       return this.toResponse(savedBooking);

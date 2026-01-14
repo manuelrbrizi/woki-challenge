@@ -68,7 +68,7 @@ describe('WokiBrain Metrics API (e2e)', () => {
 
   beforeEach(async () => {
     // Clear in-memory services between tests
-    idempotencyService.clear();
+    await idempotencyService.clear();
     lockManagerService.clear();
 
     // Clean bookings table before each test

@@ -1,30 +1,31 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Inject } from '@nestjs/common';
 import { Booking } from '../../domain/entities/booking.entity';
+import { Idempotency } from '../../domain/entities/idempotency.entity';
 import { createHash } from 'crypto';
-
-interface IdempotencyEntry {
-  booking: Booking;
-  payloadHash: string;
-  expiresAt: Date;
-}
+import { IdempotencyRepository as IIdempotencyRepository } from '../../ports/repositories/idempotency.repository.interface';
+import { IDEMPOTENCY_REPOSITORY } from '../../tokens';
 
 @Injectable()
 export class IdempotencyService {
-  private cache = new Map<string, IdempotencyEntry>();
   private readonly TTL_MS = 60 * 1000; // 60 seconds
+
+  constructor(
+    @Inject(IDEMPOTENCY_REPOSITORY)
+    private readonly repository: IIdempotencyRepository,
+  ) {}
 
   /**
    * Check if an idempotency key exists and return the cached booking.
    */
-  get(key: string, payload: unknown): Booking | null {
-    const entry = this.cache.get(key);
+  async get(key: string, payload: unknown): Promise<Booking | null> {
+    const entry = await this.repository.findById(key);
     if (!entry) {
       return null;
     }
 
     // Check if expired
     if (entry.expiresAt < new Date()) {
-      this.cache.delete(key);
+      await this.repository.deleteExpired();
       return null;
     }
 
@@ -46,32 +47,33 @@ export class IdempotencyService {
   /**
    * Store an idempotency key with the booking.
    */
-  set(key: string, booking: Booking, payload: unknown): void {
+  async set(key: string, booking: Booking, payload: unknown): Promise<void> {
     const expiresAt = new Date(Date.now() + this.TTL_MS);
     const payloadHash = this.hashPayload(payload);
-    this.cache.set(key, { booking, payloadHash, expiresAt });
 
-    // Clean up expired entries periodically
-    this.cleanup();
+    const idempotency = new Idempotency();
+    idempotency.id = key;
+    idempotency.bookingId = booking.id;
+    idempotency.payloadHash = payloadHash;
+    idempotency.expiresAt = expiresAt;
+    idempotency.booking = booking;
+
+    await this.repository.create(idempotency);
+
+    // Clean up expired entries periodically (async, don't wait)
+    this.repository.deleteExpired().catch(() => {
+      // Ignore cleanup errors
+    });
   }
 
   private hashPayload(payload: unknown): string {
     return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
   }
 
-  private cleanup(): void {
-    const now = new Date();
-    for (const [key, entry] of this.cache.entries()) {
-      if (entry.expiresAt < now) {
-        this.cache.delete(key);
-      }
-    }
-  }
-
   /**
    * Clear all idempotency entries (useful for testing)
    */
-  clear(): void {
-    this.cache.clear();
+  async clear(): Promise<void> {
+    await this.repository.deleteAll();
   }
 }

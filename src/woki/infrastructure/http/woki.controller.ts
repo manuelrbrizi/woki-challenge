@@ -15,6 +15,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { BookingQueryService } from '../../application/services/booking-query.service';
 import { BookingCommandService } from '../../application/services/booking-command.service';
 import { BlackoutQueryService } from '../../application/services/blackout-query.service';
@@ -46,6 +47,18 @@ import { randomUUID } from 'crypto';
 import { Inject } from '@nestjs/common';
 import { BOOKING_REPOSITORY } from '../../tokens';
 
+// Helper function to get throttle limits based on environment
+// In test mode, use much higher limits to avoid rate limiting in tests
+const getThrottleConfig = (defaultLimit: number) => {
+  const isTest = process.env.NODE_ENV === 'test';
+  return {
+    default: {
+      limit: isTest ? 10000 : defaultLimit,
+      ttl: 60000,
+    },
+  };
+};
+
 @ApiTags('woki')
 @Controller('woki')
 export class WokiController {
@@ -61,6 +74,7 @@ export class WokiController {
   ) {}
 
   @Get('discover')
+  @Throttle(getThrottleConfig(100))
   @ApiOperation({ summary: 'Discover available seats' })
   @ApiResponse({ status: 200, description: 'Candidates found' })
   @ApiResponse({ status: 404, description: 'Restaurant or sector not found' })
@@ -134,6 +148,7 @@ export class WokiController {
   }
 
   @Post('bookings')
+  @Throttle(getThrottleConfig(5))
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a booking' })
   @ApiResponse({ status: 201, description: 'Booking created' })
@@ -209,6 +224,7 @@ export class WokiController {
   }
 
   @Get('bookings/day')
+  @Throttle(getThrottleConfig(100))
   @ApiOperation({ summary: 'List bookings for a day' })
   @ApiResponse({ status: 200, description: 'Bookings listed' })
   @ApiResponse({ status: 404, description: 'Restaurant or sector not found' })
@@ -264,6 +280,7 @@ export class WokiController {
   }
 
   @Delete('bookings/:id')
+  @Throttle(getThrottleConfig(5))
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Cancel a booking' })
   @ApiResponse({ status: 204, description: 'Booking cancelled' })
@@ -306,6 +323,7 @@ export class WokiController {
   }
 
   @Post('blackouts')
+  @Throttle(getThrottleConfig(5))
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a blackout' })
   @ApiResponse({ status: 201, description: 'Blackout created' })
@@ -373,6 +391,7 @@ export class WokiController {
   }
 
   @Get('blackouts')
+  @Throttle(getThrottleConfig(100))
   @ApiOperation({ summary: 'List blackouts for a day' })
   @ApiResponse({ status: 200, description: 'Blackouts listed' })
   @ApiResponse({ status: 404, description: 'Restaurant or sector not found' })
@@ -428,6 +447,7 @@ export class WokiController {
   }
 
   @Delete('blackouts/:id')
+  @Throttle(getThrottleConfig(5))
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a blackout' })
   @ApiResponse({ status: 204, description: 'Blackout deleted' })
@@ -462,6 +482,7 @@ export class WokiController {
   }
 
   @Get('metrics')
+  @Throttle(getThrottleConfig(100))
   @ApiOperation({ summary: 'Get metrics' })
   @ApiResponse({ status: 200, description: 'Metrics retrieved' })
   getMetrics() {

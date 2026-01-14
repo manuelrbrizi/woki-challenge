@@ -1,17 +1,22 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { Restaurant } from './domain/entities/restaurant.entity';
 import { Sector } from './domain/entities/sector.entity';
 import { Table } from './domain/entities/table.entity';
 import { Booking } from './domain/entities/booking.entity';
 import { Blackout } from './domain/entities/blackout.entity';
 import { ServiceWindow } from './domain/entities/service-window.entity';
+import { Idempotency } from './domain/entities/idempotency.entity';
 import { RestaurantRepository } from './infrastructure/persistence/repositories/restaurant.repository';
 import { SectorRepository } from './infrastructure/persistence/repositories/sector.repository';
 import { TableRepository } from './infrastructure/persistence/repositories/table.repository';
 import { BookingRepository } from './infrastructure/persistence/repositories/booking.repository';
 import { BlackoutRepository } from './infrastructure/persistence/repositories/blackout.repository';
 import { ServiceWindowRepository } from './infrastructure/persistence/repositories/service-window.repository';
+import { IdempotencyRepository } from './infrastructure/persistence/repositories/idempotency.repository';
+import { ThrottlerExceptionFilter } from './infrastructure/rate-limiting/throttler-exception.filter';
 import { SeedService } from './infrastructure/persistence/seed.service';
 import { GapDiscoveryService } from './domain/services/gap-discovery.service';
 import { ComboCalculatorService } from './domain/services/combo-calculator.service';
@@ -32,6 +37,7 @@ import {
   BOOKING_REPOSITORY,
   BLACKOUT_REPOSITORY,
   SERVICE_WINDOW_REPOSITORY,
+  IDEMPOTENCY_REPOSITORY,
 } from './tokens';
 
 @Module({
@@ -43,7 +49,16 @@ import {
       Booking,
       Blackout,
       ServiceWindow,
+      Idempotency,
     ]),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60,
+          limit: process.env.NODE_ENV === 'test' ? 10000 : 100, // Much higher limit in test (overridden by @Throttle decorators)
+        },
+      ],
+    }),
   ],
   controllers: [WokiController],
   providers: [
@@ -64,6 +79,7 @@ import {
     BookingRepository,
     BlackoutRepository,
     ServiceWindowRepository,
+    IdempotencyRepository,
     // Repository interfaces (provide tokens, use implementations)
     {
       provide: RESTAURANT_REPOSITORY,
@@ -89,11 +105,24 @@ import {
       provide: SERVICE_WINDOW_REPOSITORY,
       useClass: ServiceWindowRepository,
     },
+    {
+      provide: IDEMPOTENCY_REPOSITORY,
+      useClass: IdempotencyRepository,
+    },
     // Application services
     BookingQueryService,
     BookingCommandService,
     BlackoutQueryService,
     BlackoutCommandService,
+    // Rate limiting
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: ThrottlerExceptionFilter,
+    },
   ],
   exports: [SeedService],
 })

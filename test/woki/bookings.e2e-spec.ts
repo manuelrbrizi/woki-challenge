@@ -75,7 +75,7 @@ describe('WokiBrain Booking API (e2e)', () => {
 
   beforeEach(async () => {
     // Clear in-memory services between tests FIRST
-    idempotencyService.clear();
+    await idempotencyService.clear();
     lockManagerService.clear();
 
     // Clean bookings table before each test (keep seed data structure)
@@ -86,6 +86,8 @@ describe('WokiBrain Booking API (e2e)', () => {
         // Delete all bookings except the seed booking B1
         // SQLite uses single quotes for string literals
         await dataSource.query(`DELETE FROM bookings WHERE id != 'B1'`);
+        // Clean idempotency table
+        await dataSource.query(`DELETE FROM idempotency`);
       } catch {
         // If table doesn't exist yet, it's OK - it will be created by the seed
         // This can happen on the first test before seed runs
