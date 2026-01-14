@@ -11,9 +11,14 @@ export class LockManagerService {
 
   /**
    * Acquire a lock for the given key.
-   * Returns a function to release the lock.
+   * Returns an object with the release function and wait time in milliseconds.
    */
-  async acquire(key: string, timeoutMs: number = 5000): Promise<() => void> {
+  async acquire(
+    key: string,
+    timeoutMs: number = 5000,
+  ): Promise<{ release: () => void; waitTimeMs: number }> {
+    const waitStartTime = Date.now();
+
     // Wait for existing lock if any
     while (this.locks.has(key)) {
       const existingLock = this.locks.get(key)!;
@@ -24,6 +29,7 @@ export class LockManagerService {
             setTimeout(() => reject(new Error('Lock timeout')), timeoutMs),
           ),
         ]);
+        // Lock was released, continue to check if there are more locks
       } catch (error) {
         // If it's a timeout error, rethrow it
         if (error instanceof Error && error.message === 'Lock timeout') {
@@ -34,6 +40,9 @@ export class LockManagerService {
       }
     }
 
+    // Calculate total wait time (from start until now)
+    const waitTimeMs = Date.now() - waitStartTime;
+
     // Create new lock
     let resolve: () => void;
     const promise = new Promise<void>((res) => {
@@ -42,13 +51,16 @@ export class LockManagerService {
 
     this.locks.set(key, { promise, resolve: resolve! });
 
-    // Return release function
-    return () => {
-      const lock = this.locks.get(key);
-      if (lock) {
-        lock.resolve();
-        this.locks.delete(key);
-      }
+    // Return release function and wait time
+    return {
+      release: () => {
+        const lock = this.locks.get(key);
+        if (lock) {
+          lock.resolve();
+          this.locks.delete(key);
+        }
+      },
+      waitTimeMs,
     };
   }
 

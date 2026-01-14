@@ -19,6 +19,7 @@ import { WokiBrainSelectorService } from './domain/services/wokibrain-selector.s
 import { LockManagerService } from './infrastructure/locking/lock-manager.service';
 import { IdempotencyService } from './infrastructure/idempotency/idempotency.service';
 import { LoggerService } from './infrastructure/logging/logger.service';
+import { MetricsService } from './infrastructure/metrics/metrics.service';
 import { BookingQueryService } from './application/services/booking-query.service';
 import { BookingCommandService } from './application/services/booking-command.service';
 import { BlackoutQueryService } from './application/services/blackout-query.service';
@@ -54,6 +55,7 @@ import {
     LockManagerService,
     IdempotencyService,
     LoggerService,
+    MetricsService,
     SeedService,
     // Repositories (implementations)
     RestaurantRepository,

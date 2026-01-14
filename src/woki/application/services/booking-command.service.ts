@@ -24,6 +24,7 @@ import {
 import { WokiBrainSelectorService } from '../../domain/services/wokibrain-selector.service';
 import { LockManagerService } from '../../infrastructure/locking/lock-manager.service';
 import { IdempotencyService } from '../../infrastructure/idempotency/idempotency.service';
+import { MetricsService } from '../../infrastructure/metrics/metrics.service';
 import { Booking } from '../../domain/entities/booking.entity';
 import { BookingStatus } from '../../domain/types/booking-status.enum';
 import { ComboCandidate } from '../../domain/types/combo-candidate.type';
@@ -53,6 +54,7 @@ export class BookingCommandService {
     private readonly lockManagerService: LockManagerService,
     private readonly idempotencyService: IdempotencyService,
     private readonly bookingQueryService: BookingQueryService,
+    private readonly metricsService: MetricsService,
   ) {}
 
   async createBooking(
@@ -141,11 +143,15 @@ export class BookingCommandService {
     );
 
     if (!candidate) {
+      this.metricsService.recordConflict('no_capacity');
       throw new ConflictException({
         error: 'no_capacity',
         detail: 'No single or combo gap fits duration within window',
       });
     }
+
+    // Start assignment time measurement (from candidate selection to booking creation)
+    const assignmentStartTime = Date.now();
 
     // Create lock key
     const lockKey = this.createLockKey(
@@ -158,9 +164,18 @@ export class BookingCommandService {
     // Acquire lock (with timeout handling)
     let releaseLock: (() => void) | null = null;
     try {
-      releaseLock = await this.lockManagerService.acquire(lockKey);
+      const lockResult = await this.lockManagerService.acquire(lockKey);
+      releaseLock = lockResult.release;
+      // Record lock wait time (only if we waited)
+      if (lockResult.waitTimeMs > 0) {
+        this.metricsService.recordLockWaitTime(lockResult.waitTimeMs);
+      }
     } catch (error) {
       if (error instanceof Error && error.message === 'Lock timeout') {
+        // For timeout cases, we can't get the exact wait time since the error
+        // is thrown before returning. We record the timeout separately.
+        this.metricsService.recordLockTimeout();
+        this.metricsService.recordConflict('table_locked');
         throw new ConflictException({
           error: 'table_locked',
           detail:
@@ -215,6 +230,7 @@ export class BookingCommandService {
       );
 
       if (!stillAvailable) {
+        this.metricsService.recordConflict('no_capacity');
         throw new ConflictException({
           error: 'no_capacity',
           detail: 'Capacity no longer available',
@@ -236,6 +252,13 @@ export class BookingCommandService {
       booking.updatedAt = new Date();
 
       const savedBooking = await this.bookingRepository.create(booking);
+
+      // Record assignment time (from candidate selection to booking creation)
+      const assignmentTime = Date.now() - assignmentStartTime;
+      this.metricsService.recordAssignmentTime(assignmentTime);
+
+      // Record booking created
+      this.metricsService.recordBookingCreated();
 
       // Store idempotency key
       if (idempotencyKey) {

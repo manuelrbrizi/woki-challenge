@@ -20,17 +20,20 @@ describe('LockManagerService', () => {
     it('should acquire and release a lock', async () => {
       const lockKey = 'test-lock-1';
 
-      const releaseLock = await service.acquire(lockKey);
-      expect(releaseLock).toBeDefined();
-      expect(typeof releaseLock).toBe('function');
+      const lockResult = await service.acquire(lockKey);
+      expect(lockResult).toBeDefined();
+      expect(lockResult.release).toBeDefined();
+      expect(typeof lockResult.release).toBe('function');
+      expect(lockResult.waitTimeMs).toBe(0); // No wait on first acquisition
 
       // Release the lock
-      releaseLock();
+      lockResult.release();
 
       // Should be able to acquire again immediately
-      const releaseLock2 = await service.acquire(lockKey);
-      expect(releaseLock2).toBeDefined();
-      releaseLock2();
+      const lockResult2 = await service.acquire(lockKey);
+      expect(lockResult2).toBeDefined();
+      expect(lockResult2.waitTimeMs).toBe(0);
+      lockResult2.release();
     });
 
     it('should block concurrent access to the same lock', async () => {
@@ -38,13 +41,14 @@ describe('LockManagerService', () => {
       const executionOrder: string[] = [];
 
       // Acquire first lock
-      const releaseLock1 = await service.acquire(lockKey);
+      const lockResult1 = await service.acquire(lockKey);
       executionOrder.push('lock1-acquired');
 
       // Try to acquire same lock (should wait)
-      const lock2Promise = service.acquire(lockKey).then((releaseLock2) => {
+      const lock2Promise = service.acquire(lockKey).then((lockResult2) => {
         executionOrder.push('lock2-acquired');
-        releaseLock2();
+        expect(lockResult2.waitTimeMs).toBeGreaterThan(0); // Should have waited
+        lockResult2.release();
       });
 
       // Give it a moment to start waiting
@@ -52,7 +56,7 @@ describe('LockManagerService', () => {
       executionOrder.push('lock2-waiting');
 
       // Release first lock
-      releaseLock1();
+      lockResult1.release();
       executionOrder.push('lock1-released');
 
       // Wait for second lock to be acquired
@@ -72,14 +76,16 @@ describe('LockManagerService', () => {
       const lockKey2 = 'lock-2';
 
       // Both should be acquirable simultaneously
-      const releaseLock1 = await service.acquire(lockKey1);
-      const releaseLock2 = await service.acquire(lockKey2);
+      const lockResult1 = await service.acquire(lockKey1);
+      const lockResult2 = await service.acquire(lockKey2);
 
-      expect(releaseLock1).toBeDefined();
-      expect(releaseLock2).toBeDefined();
+      expect(lockResult1).toBeDefined();
+      expect(lockResult2).toBeDefined();
+      expect(lockResult1.waitTimeMs).toBe(0);
+      expect(lockResult2.waitTimeMs).toBe(0);
 
-      releaseLock1();
-      releaseLock2();
+      lockResult1.release();
+      lockResult2.release();
     });
 
     it('should timeout if lock is held too long', async () => {
@@ -87,7 +93,7 @@ describe('LockManagerService', () => {
       const shortTimeout = 100; // 100ms timeout
 
       // Acquire first lock
-      const releaseLock1 = await service.acquire(lockKey);
+      const lockResult1 = await service.acquire(lockKey);
 
       // Try to acquire with short timeout (should fail)
       const lock2Promise = service.acquire(lockKey, shortTimeout);
@@ -95,23 +101,25 @@ describe('LockManagerService', () => {
       await expect(lock2Promise).rejects.toThrow('Lock timeout');
 
       // Clean up
-      releaseLock1();
+      lockResult1.release();
     });
 
     it('should allow sequential locks on the same key', async () => {
       const lockKey = 'sequential-lock';
 
       // First lock
-      const release1 = await service.acquire(lockKey);
-      release1();
+      const lockResult1 = await service.acquire(lockKey);
+      lockResult1.release();
 
       // Second lock (should work immediately)
-      const release2 = await service.acquire(lockKey);
-      release2();
+      const lockResult2 = await service.acquire(lockKey);
+      expect(lockResult2.waitTimeMs).toBe(0);
+      lockResult2.release();
 
       // Third lock (should work immediately)
-      const release3 = await service.acquire(lockKey);
-      release3();
+      const lockResult3 = await service.acquire(lockKey);
+      expect(lockResult3.waitTimeMs).toBe(0);
+      lockResult3.release();
     });
 
     it('should handle multiple waiters on the same lock', async () => {
@@ -119,18 +127,20 @@ describe('LockManagerService', () => {
       const executionOrder: string[] = [];
 
       // Acquire first lock
-      const releaseLock1 = await service.acquire(lockKey);
+      const lockResult1 = await service.acquire(lockKey);
       executionOrder.push('lock1-acquired');
 
       // Create multiple waiters
-      const waiter2 = service.acquire(lockKey).then((release) => {
+      const waiter2 = service.acquire(lockKey).then((lockResult) => {
         executionOrder.push('lock2-acquired');
-        release();
+        expect(lockResult.waitTimeMs).toBeGreaterThan(0);
+        lockResult.release();
       });
 
-      const waiter3 = service.acquire(lockKey).then((release) => {
+      const waiter3 = service.acquire(lockKey).then((lockResult) => {
         executionOrder.push('lock3-acquired');
-        release();
+        expect(lockResult.waitTimeMs).toBeGreaterThan(0);
+        lockResult.release();
       });
 
       // Give waiters time to start
@@ -138,7 +148,7 @@ describe('LockManagerService', () => {
       executionOrder.push('waiters-started');
 
       // Release first lock
-      releaseLock1();
+      lockResult1.release();
       executionOrder.push('lock1-released');
 
       // Wait for all waiters

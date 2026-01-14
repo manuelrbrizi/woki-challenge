@@ -41,6 +41,7 @@ import {
 } from '../../application/dto/list-blackouts.dto';
 import { BookingRepository as IBookingRepository } from '../../ports/repositories/booking.repository.interface';
 import { LoggerService } from '../logging/logger.service';
+import { MetricsService } from '../metrics/metrics.service';
 import { randomUUID } from 'crypto';
 import { Inject } from '@nestjs/common';
 import { BOOKING_REPOSITORY } from '../../tokens';
@@ -56,6 +57,7 @@ export class WokiController {
     @Inject(BOOKING_REPOSITORY)
     private readonly bookingRepository: IBookingRepository,
     private readonly logger: LoggerService,
+    private readonly metricsService: MetricsService,
   ) {}
 
   @Get('discover')
@@ -278,6 +280,9 @@ export class WokiController {
 
       await this.bookingRepository.delete(id);
 
+      // Record cancellation in metrics
+      this.metricsService.recordBookingCancelled();
+
       this.logger.log({
         requestId,
         op: 'cancel_booking',
@@ -454,5 +459,12 @@ export class WokiController {
 
       throw error;
     }
+  }
+
+  @Get('metrics')
+  @ApiOperation({ summary: 'Get metrics' })
+  @ApiResponse({ status: 200, description: 'Metrics retrieved' })
+  getMetrics() {
+    return this.metricsService.getMetrics();
   }
 }
