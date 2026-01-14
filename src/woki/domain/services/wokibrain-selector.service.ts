@@ -24,10 +24,16 @@ export class WokiBrainSelectorService {
 
     // Prefer singles over combos
     if (singles.length > 0) {
-      // Among singles, prefer earlier slots
-      return singles.sort(
-        (a, b) => a.interval.start.getTime() - b.interval.start.getTime(),
-      )[0];
+      // Sort singles to ensure deterministic selection
+      // (even though candidates are pre-sorted, we sort here for safety)
+      const sorted = singles.sort((a, b) => {
+        const timeDiff =
+          a.interval.start.getTime() - b.interval.start.getTime();
+        if (timeDiff !== 0) return timeDiff;
+        // Break ties by table ID (alphabetically) for deterministic selection
+        return a.tableIds[0].localeCompare(b.tableIds[0]);
+      });
+      return sorted[0];
     }
 
     // Among combos, prefer fewer tables, then earlier slots

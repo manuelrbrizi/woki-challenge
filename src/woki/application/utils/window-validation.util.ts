@@ -43,8 +43,7 @@ export function validateWindowWithinServiceHours(
   if (!isWithinAnyWindow) {
     throw new UnprocessableEntityException({
       error: 'outside_service_window',
-      detail:
-        'Specified window lies outside service hours. Please check restaurant service windows.',
+      detail: 'Window does not intersect service hours',
     });
   }
 }

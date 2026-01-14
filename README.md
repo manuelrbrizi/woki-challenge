@@ -87,7 +87,19 @@ Query parameters:
 - `400`: Invalid input
 - `404`: Restaurant or sector not found
 - `409`: No capacity available
+  ```json
+  {
+    "error": "no_capacity",
+    "detail": "No single or combo gap fits duration within window"
+  }
+  ```
 - `422`: Outside service window
+  ```json
+  {
+    "error": "outside_service_window",
+    "detail": "Window does not intersect service hours"
+  }
+  ```
 
 ### 2. Create Booking
 

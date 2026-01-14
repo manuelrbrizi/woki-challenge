@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { Booking } from '../../domain/entities/booking.entity';
 import { createHash } from 'crypto';
 
@@ -33,9 +33,11 @@ export class IdempotencyService {
 
     // If payloads don't match, the idempotency key is being reused with different data
     if (payloadHash !== entry.payloadHash) {
-      // In production, you might want to throw an error or return null
-      // For now, we'll return null to indicate the key doesn't match
-      return null;
+      // Idempotency key exists but payload doesn't match - this is an error
+      throw new BadRequestException({
+        error: 'invalid_input',
+        detail: 'Idempotency key already used with different payload',
+      });
     }
 
     return entry.booking;
@@ -64,5 +66,12 @@ export class IdempotencyService {
         this.cache.delete(key);
       }
     }
+  }
+
+  /**
+   * Clear all idempotency entries (useful for testing)
+   */
+  clear(): void {
+    this.cache.clear();
   }
 }

@@ -3,7 +3,6 @@ import { Booking } from '../entities/booking.entity';
 import { BookingStatus } from '../types/booking-status.enum';
 import { TimeInterval } from '../types/time-interval.type';
 import { Restaurant } from '../entities/restaurant.entity';
-import { startOfDay } from 'date-fns';
 import { zonedTimeToUtc } from 'date-fns-tz';
 
 @Injectable()
@@ -22,13 +21,13 @@ export class GapDiscoveryService {
     windowStart?: string,
     windowEnd?: string,
   ): TimeInterval[] {
-    // Filter confirmed bookings for this table on this date
+    // Filter confirmed bookings for this table
+    // Note: bookings are already filtered by date in the restaurant's timezone
+    // by the repository query, so we don't need to check isSameDay here
     const tableBookings = bookings
       .filter(
         (b) =>
-          b.tableIds.includes(tableId) &&
-          b.status === BookingStatus.CONFIRMED &&
-          this.isSameDay(b.start, date),
+          b.tableIds.includes(tableId) && b.status === BookingStatus.CONFIRMED,
       )
       .map((b) => ({
         start: b.start,
@@ -61,7 +60,8 @@ export class GapDiscoveryService {
       gaps.push(...windowGaps);
     }
 
-    return gaps;
+    // Sort all gaps by start time to ensure deterministic order across service windows
+    return gaps.sort((a, b) => a.start.getTime() - b.start.getTime());
   }
 
   /**
@@ -110,6 +110,11 @@ export class GapDiscoveryService {
     );
 
     // Intersect gaps - find intervals where all tables are free
+    // If any table has no gaps, the intersection will be empty
+    if (gapsByTable.some((gaps) => gaps.length === 0)) {
+      return [];
+    }
+
     let intersection = gapsByTable[0];
 
     for (let i = 1; i < gapsByTable.length; i++) {
@@ -123,10 +128,12 @@ export class GapDiscoveryService {
   }
 
   private isSameDay(date1: Date, date2: Date): boolean {
+    // Use UTC methods to avoid timezone issues
+    // All dates in the system are stored in UTC
     return (
-      date1.getFullYear() === date2.getFullYear() &&
-      date1.getMonth() === date2.getMonth() &&
-      date1.getDate() === date2.getDate()
+      date1.getUTCFullYear() === date2.getUTCFullYear() &&
+      date1.getUTCMonth() === date2.getUTCMonth() &&
+      date1.getUTCDate() === date2.getUTCDate()
     );
   }
 
@@ -138,12 +145,28 @@ export class GapDiscoveryService {
     windowEnd?: string,
   ): TimeInterval[] {
     const timezone = restaurant.timezone;
-    const dayStart = startOfDay(date);
+    // Extract year, month, day from the date (using UTC to avoid timezone issues)
+    // The date parameter comes from parseISO which creates a UTC date at midnight
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth();
+    const day = date.getUTCDate();
 
     // If specific window provided, use it
     if (windowStart && windowEnd) {
-      const start = this.parseTimeInTimezone(dayStart, windowStart, timezone);
-      const end = this.parseTimeInTimezone(dayStart, windowEnd, timezone);
+      const start = this.parseTimeInTimezone(
+        year,
+        month,
+        day,
+        windowStart,
+        timezone,
+      );
+      const end = this.parseTimeInTimezone(
+        year,
+        month,
+        day,
+        windowEnd,
+        timezone,
+      );
       return [{ start, end }];
     }
 
@@ -151,25 +174,33 @@ export class GapDiscoveryService {
     if (!serviceWindows || serviceWindows.length === 0) {
       // Full day if no windows specified
       // Create a full day window: 00:00 to 24:00 in restaurant's timezone
-      const start = this.parseTimeInTimezone(dayStart, '00:00', timezone);
-      const end = this.parseTimeInTimezone(dayStart, '24:00', timezone);
+      const start = this.parseTimeInTimezone(
+        year,
+        month,
+        day,
+        '00:00',
+        timezone,
+      );
+      const end = this.parseTimeInTimezone(year, month, day, '24:00', timezone);
       return [{ start, end }];
     }
 
     return serviceWindows.map((window) => ({
-      start: this.parseTimeInTimezone(dayStart, window.start, timezone),
-      end: this.parseTimeInTimezone(dayStart, window.end, timezone),
+      start: this.parseTimeInTimezone(year, month, day, window.start, timezone),
+      end: this.parseTimeInTimezone(year, month, day, window.end, timezone),
     }));
   }
 
   private parseTimeInTimezone(
-    dayStart: Date,
+    year: number,
+    month: number,
+    day: number,
     timeStr: string,
     timezone: string,
   ): Date {
     const [hours, minutes] = timeStr.split(':').map(Number);
     // Create date string in the timezone
-    const dateStr = `${dayStart.getFullYear()}-${String(dayStart.getMonth() + 1).padStart(2, '0')}-${String(dayStart.getDate()).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
     // Parse as if it's in the timezone, then convert to UTC
     return zonedTimeToUtc(new Date(dateStr), timezone);
   }

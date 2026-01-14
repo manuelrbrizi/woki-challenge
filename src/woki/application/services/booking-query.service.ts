@@ -66,17 +66,26 @@ export class BookingQueryService {
       query.restaurantId,
     );
     if (!restaurant) {
-      throw new NotFoundException('Restaurant not found');
+      throw new NotFoundException({
+        error: 'not_found',
+        detail: 'Restaurant not found',
+      });
     }
 
     // Get sector
     const sector = await this.sectorRepository.findById(query.sectorId);
     if (!sector) {
-      throw new NotFoundException('Sector not found');
+      throw new NotFoundException({
+        error: 'not_found',
+        detail: 'Sector not found',
+      });
     }
 
     if (sector.restaurantId !== restaurant.id) {
-      throw new NotFoundException('Sector not found in restaurant');
+      throw new NotFoundException({
+        error: 'not_found',
+        detail: 'Sector not found in restaurant',
+      });
     }
 
     // Get all tables in sector
@@ -89,11 +98,12 @@ export class BookingQueryService {
       };
     }
 
-    // Get all bookings for the date
+    // Get all bookings for the date (using restaurant timezone)
     const bookings = await this.bookingRepository.findByDate(
       restaurant.id,
       sector.id,
       date,
+      restaurant.timezone,
     );
 
     // Get service windows for the restaurant
@@ -151,24 +161,34 @@ export class BookingQueryService {
       query.restaurantId,
     );
     if (!restaurant) {
-      throw new NotFoundException('Restaurant not found');
+      throw new NotFoundException({
+        error: 'not_found',
+        detail: 'Restaurant not found',
+      });
     }
 
     // Get sector
     const sector = await this.sectorRepository.findById(query.sectorId);
     if (!sector) {
-      throw new NotFoundException('Sector not found');
+      throw new NotFoundException({
+        error: 'not_found',
+        detail: 'Sector not found',
+      });
     }
 
     if (sector.restaurantId !== restaurant.id) {
-      throw new NotFoundException('Sector not found in restaurant');
+      throw new NotFoundException({
+        error: 'not_found',
+        detail: 'Sector not found in restaurant',
+      });
     }
 
-    // Get bookings
+    // Get bookings (using restaurant timezone)
     const bookings = await this.bookingRepository.findByDate(
       query.restaurantId,
       query.sectorId,
       date,
+      restaurant.timezone,
     );
 
     return {
@@ -216,7 +236,12 @@ export class BookingQueryService {
           windowEnd,
         );
 
-        for (const gap of gaps) {
+        // Sort gaps by start time to ensure deterministic candidate generation
+        const sortedGaps = gaps.sort(
+          (a, b) => a.start.getTime() - b.start.getTime(),
+        );
+
+        for (const gap of sortedGaps) {
           candidates.push({
             tableIds: [table.id],
             minCapacity: table.minSize,
@@ -249,9 +274,13 @@ export class BookingQueryService {
       if (a.kind === 'single' && b.kind === 'combo') return -1;
       if (a.kind === 'combo' && b.kind === 'single') return 1;
 
-      // Among singles, earlier slots
+      // Among singles, earlier slots, then by table ID for tie-breaking
       if (a.kind === 'single' && b.kind === 'single') {
-        return a.interval.start.getTime() - b.interval.start.getTime();
+        const timeDiff =
+          a.interval.start.getTime() - b.interval.start.getTime();
+        if (timeDiff !== 0) return timeDiff;
+        // Break ties by table ID (alphabetically) for deterministic selection
+        return a.tableIds[0].localeCompare(b.tableIds[0]);
       }
 
       // Among combos, fewer tables, then earlier slots
@@ -372,8 +401,14 @@ export class BookingQueryService {
         const newMax = currentMax + table.maxSize;
 
         // Pruning 2 (safe):
-        // Even if we add more tables, this combo can never reach partySize
-        if (newMax < partySize) {
+        // Even if we add ALL remaining tables, this combo can never reach partySize
+        // Calculate the maximum possible capacity if we add all remaining tables
+        let maxPossibleCapacity = newMax;
+        for (let j = i + 1; j < sortedTables.length; j++) {
+          maxPossibleCapacity += sortedTables[j].maxSize;
+        }
+
+        if (maxPossibleCapacity < partySize) {
           continue;
         }
 

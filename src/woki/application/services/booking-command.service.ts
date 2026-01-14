@@ -88,18 +88,36 @@ export class BookingCommandService {
       request.restaurantId,
     );
     if (!restaurant) {
-      throw new NotFoundException('Restaurant not found');
+      throw new NotFoundException({
+        error: 'not_found',
+        detail: 'Restaurant not found',
+      });
     }
 
     // Get sector
     const sector = await this.sectorRepository.findById(request.sectorId);
     if (!sector) {
-      throw new NotFoundException('Sector not found');
+      throw new NotFoundException({
+        error: 'not_found',
+        detail: 'Sector not found',
+      });
     }
 
     if (sector.restaurantId !== restaurant.id) {
-      throw new NotFoundException('Sector not found in restaurant');
+      throw new NotFoundException({
+        error: 'not_found',
+        detail: 'Sector not found in restaurant',
+      });
     }
+
+    // Get all bookings for the date ONCE and reuse them
+    // This ensures consistency between candidate selection and verification
+    const bookings = await this.bookingRepository.findByDate(
+      request.restaurantId,
+      request.sectorId,
+      date,
+      restaurant.timezone,
+    );
 
     // Find best candidate using query service
     const candidate = await this.findBestCandidate(
@@ -107,6 +125,7 @@ export class BookingCommandService {
       restaurant,
       sector,
       date,
+      bookings,
     );
 
     if (!candidate) {
@@ -141,13 +160,25 @@ export class BookingCommandService {
 
     try {
       // Re-verify capacity (double-check after acquiring lock)
-      // This is the collision check: verify against latest in-memory state
-      const stillAvailable = await this.verifyCapacityStillAvailable(
-        candidate,
-        request,
-        restaurant,
-        sector,
+      // Re-query ALL bookings for the date to check for any new bookings created between
+      // candidate selection and lock acquisition. Use the same query method as initial query.
+      const currentBookings = await this.bookingRepository.findByDate(
+        request.restaurantId,
+        request.sectorId,
         date,
+        restaurant.timezone,
+      );
+
+      // Filter to only bookings that involve the candidate's tables
+      const relevantBookings = currentBookings.filter(
+        (b) =>
+          b.status === BookingStatus.CONFIRMED &&
+          b.tableIds.some((id) => candidate.tableIds.includes(id)),
+      );
+
+      const stillAvailable = this.verifyCapacityStillAvailable(
+        candidate,
+        relevantBookings,
       );
 
       if (!stillAvailable) {
@@ -191,16 +222,10 @@ export class BookingCommandService {
     restaurant: { timezone: string },
     sector: { id: string },
     date: Date,
+    bookings: Booking[],
   ): Promise<ComboCandidate | null> {
     // Get all tables in sector
     const tables = await this.tableRepository.findBySectorId(sector.id);
-
-    // Get all bookings for the date
-    const bookings = await this.bookingRepository.findByDate(
-      request.restaurantId,
-      request.sectorId,
-      date,
-    );
 
     // Get service windows for the restaurant
     const serviceWindows =
@@ -234,29 +259,25 @@ export class BookingCommandService {
     return this.wokiBrainSelectorService.selectBestCandidate(candidates);
   }
 
-  private async verifyCapacityStillAvailable(
+  private verifyCapacityStillAvailable(
     candidate: ComboCandidate,
-    request: CreateBookingRequest,
-    restaurant: { timezone: string },
-    sector: { id: string },
-    date: Date,
-  ): Promise<boolean> {
-    // Re-query bookings to check if gap still exists
-    const bookings = await this.bookingRepository.findByTableIdsAndDate(
-      candidate.tableIds,
-      date,
+    bookings: Booking[],
+  ): boolean {
+    // Filter bookings that involve any of the candidate's tables
+    const relevantBookings = bookings.filter(
+      (b) =>
+        b.status === BookingStatus.CONFIRMED &&
+        b.tableIds.some((id) => candidate.tableIds.includes(id)),
     );
 
     // Check if candidate interval still has no conflicts
-    const conflicts = bookings.filter(
-      (b) =>
-        b.status === BookingStatus.CONFIRMED &&
-        this.intervalsOverlap(
-          candidate.interval.start,
-          candidate.interval.end,
-          b.start,
-          b.end,
-        ),
+    const conflicts = relevantBookings.filter((b) =>
+      this.intervalsOverlap(
+        candidate.interval.start,
+        candidate.interval.end,
+        b.start,
+        b.end,
+      ),
     );
 
     return conflicts.length === 0;

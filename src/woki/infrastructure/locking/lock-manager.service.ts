@@ -51,4 +51,15 @@ export class LockManagerService {
       }
     };
   }
+
+  /**
+   * Clear all locks (useful for testing)
+   */
+  clear(): void {
+    // Resolve all pending locks before clearing
+    for (const lock of this.locks.values()) {
+      lock.resolve();
+    }
+    this.locks.clear();
+  }
 }

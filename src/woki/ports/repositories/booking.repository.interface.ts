@@ -6,6 +6,7 @@ export interface BookingRepository {
     restaurantId: string,
     sectorId: string,
     date: Date,
+    timezone?: string,
   ): Promise<Booking[]>;
   findByTableIdsAndDate(tableIds: string[], date: Date): Promise<Booking[]>;
   create(booking: Booking): Promise<Booking>;
