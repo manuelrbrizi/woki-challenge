@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Booking } from '../entities/booking.entity';
+import { Blackout } from '../entities/blackout.entity';
 import { BookingStatus } from '../types/booking-status.enum';
 import { TimeInterval } from '../types/time-interval.type';
 import { Restaurant } from '../entities/restaurant.entity';
@@ -13,7 +14,9 @@ export class GapDiscoveryService {
    */
   findGapsForTable(
     bookings: Booking[],
+    blackouts: Blackout[],
     tableId: string,
+    sectorId: string,
     date: Date,
     durationMinutes: number,
     restaurant: Restaurant,
@@ -32,8 +35,29 @@ export class GapDiscoveryService {
       .map((b) => ({
         start: b.start,
         end: b.end,
-      }))
-      .sort((a, b) => a.start.getTime() - b.start.getTime());
+      }));
+
+    // Filter blackouts that affect this table
+    // A blackout affects a table if:
+    // 1. tableIds includes the table, OR
+    // 2. sectorId matches and tableIds is empty (whole sector blackout)
+    const tableBlackouts = blackouts
+      .filter((bl) => {
+        if (bl.tableIds.includes(tableId)) return true;
+        if (bl.sectorId === sectorId && bl.tableIds.length === 0) {
+          return true; // Whole sector blackout
+        }
+        return false;
+      })
+      .map((bl) => ({
+        start: bl.start,
+        end: bl.end,
+      }));
+
+    // Combine bookings and blackouts, then sort
+    const allBlockers = [...tableBookings, ...tableBlackouts].sort(
+      (a, b) => a.start.getTime() - b.start.getTime(),
+    );
 
     // Get service windows for the day
     const windows = this.getServiceWindowsForDate(
@@ -53,7 +77,7 @@ export class GapDiscoveryService {
     // Find gaps within each service window
     for (const window of windows) {
       const windowGaps = this.findGapsInWindow(
-        tableBookings,
+        allBlockers,
         window,
         durationMinutes,
       );
@@ -70,7 +94,9 @@ export class GapDiscoveryService {
    */
   findComboGaps(
     bookings: Booking[],
+    blackouts: Blackout[],
     tableIds: string[],
+    sectorId: string,
     date: Date,
     durationMinutes: number,
     restaurant: Restaurant,
@@ -85,7 +111,9 @@ export class GapDiscoveryService {
     if (tableIds.length === 1) {
       return this.findGapsForTable(
         bookings,
+        blackouts,
         tableIds[0],
+        sectorId,
         date,
         durationMinutes,
         restaurant,
@@ -99,7 +127,9 @@ export class GapDiscoveryService {
     const gapsByTable = tableIds.map((tableId) =>
       this.findGapsForTable(
         bookings,
+        blackouts,
         tableId,
+        sectorId,
         date,
         durationMinutes,
         restaurant,

@@ -17,6 +17,8 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { BookingQueryService } from '../../application/services/booking-query.service';
 import { BookingCommandService } from '../../application/services/booking-command.service';
+import { BlackoutQueryService } from '../../application/services/blackout-query.service';
+import { BlackoutCommandService } from '../../application/services/blackout-command.service';
 import {
   DiscoverSeatsQuerySchema,
   DiscoverSeatsQuery,
@@ -29,6 +31,14 @@ import {
   ListBookingsQuerySchema,
   ListBookingsQuery,
 } from '../../application/dto/list-bookings.dto';
+import {
+  CreateBlackoutSchema,
+  CreateBlackoutRequest,
+} from '../../application/dto/create-blackout.dto';
+import {
+  ListBlackoutsQuerySchema,
+  ListBlackoutsQuery,
+} from '../../application/dto/list-blackouts.dto';
 import { BookingRepository as IBookingRepository } from '../../ports/repositories/booking.repository.interface';
 import { LoggerService } from '../logging/logger.service';
 import { randomUUID } from 'crypto';
@@ -41,6 +51,8 @@ export class WokiController {
   constructor(
     private readonly bookingQueryService: BookingQueryService,
     private readonly bookingCommandService: BookingCommandService,
+    private readonly blackoutQueryService: BlackoutQueryService,
+    private readonly blackoutCommandService: BlackoutCommandService,
     @Inject(BOOKING_REPOSITORY)
     private readonly bookingRepository: IBookingRepository,
     private readonly logger: LoggerService,
@@ -278,6 +290,162 @@ export class WokiController {
         durationMs: Date.now() - startTime,
         outcome: 'error',
         op: 'cancel_booking',
+      });
+
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw error;
+    }
+  }
+
+  @Post('blackouts')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a blackout' })
+  @ApiResponse({ status: 201, description: 'Blackout created' })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  @ApiResponse({
+    status: 404,
+    description: 'Restaurant, sector, or table not found',
+  })
+  async createBlackout(@Body() body: CreateBlackoutRequest) {
+    const requestId = randomUUID();
+    const startTime = Date.now();
+
+    try {
+      // Validate body
+      const validated = CreateBlackoutSchema.parse(body);
+
+      this.logger.log({
+        requestId,
+        restaurantId: validated.restaurantId,
+        sectorId: validated.sectorId,
+        reason: validated.reason,
+        op: 'create_blackout',
+        outcome: 'success',
+      });
+
+      const result =
+        await this.blackoutCommandService.createBlackout(validated);
+
+      this.logger.log({
+        requestId,
+        durationMs: Date.now() - startTime,
+        outcome: 'success',
+        op: 'create_blackout',
+      });
+
+      return result;
+    } catch (error: any) {
+      this.logger.error('Create blackout failed', error, {
+        requestId,
+        durationMs: Date.now() - startTime,
+        outcome: 'error',
+        op: 'create_blackout',
+      });
+
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      if (error.name === 'ZodError') {
+        throw new BadRequestException({
+          error: 'invalid_input',
+          detail: error.errors,
+        });
+      }
+
+      throw new BadRequestException({
+        error: 'invalid_input',
+        detail: error.message,
+      });
+    }
+  }
+
+  @Get('blackouts')
+  @ApiOperation({ summary: 'List blackouts for a day' })
+  @ApiResponse({ status: 200, description: 'Blackouts listed' })
+  @ApiResponse({ status: 404, description: 'Restaurant or sector not found' })
+  async listBlackouts(@Query() query: ListBlackoutsQuery) {
+    const requestId = randomUUID();
+    const startTime = Date.now();
+
+    try {
+      // Validate query
+      const validated = ListBlackoutsQuerySchema.parse(query);
+
+      this.logger.log({
+        requestId,
+        sectorId: validated.sectorId,
+        op: 'list_blackouts',
+        outcome: 'success',
+      });
+
+      const result = await this.blackoutQueryService.listBlackouts(validated);
+
+      this.logger.log({
+        requestId,
+        durationMs: Date.now() - startTime,
+        outcome: 'success',
+        op: 'list_blackouts',
+      });
+
+      return result;
+    } catch (error: any) {
+      this.logger.error('List blackouts failed', error, {
+        requestId,
+        durationMs: Date.now() - startTime,
+        outcome: 'error',
+        op: 'list_blackouts',
+      });
+
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      if (error.name === 'ZodError') {
+        throw new BadRequestException({
+          error: 'invalid_input',
+          detail: error.errors,
+        });
+      }
+
+      throw new BadRequestException({
+        error: 'invalid_input',
+        detail: error.message,
+      });
+    }
+  }
+
+  @Delete('blackouts/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a blackout' })
+  @ApiResponse({ status: 204, description: 'Blackout deleted' })
+  @ApiResponse({ status: 404, description: 'Blackout not found' })
+  async deleteBlackout(@Param('id') id: string) {
+    const requestId = randomUUID();
+    const startTime = Date.now();
+
+    try {
+      await this.blackoutCommandService.deleteBlackout(id);
+
+      this.logger.log({
+        requestId,
+        op: 'delete_blackout',
+        durationMs: Date.now() - startTime,
+        outcome: 'success',
+      });
+    } catch (error: any) {
+      this.logger.error('Delete blackout failed', error, {
+        requestId,
+        durationMs: Date.now() - startTime,
+        outcome: 'error',
+        op: 'delete_blackout',
       });
 
       if (error instanceof NotFoundException) {

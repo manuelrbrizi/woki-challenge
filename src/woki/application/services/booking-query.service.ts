@@ -4,12 +4,14 @@ import { RestaurantRepository as IRestaurantRepository } from '../../ports/repos
 import { SectorRepository as ISectorRepository } from '../../ports/repositories/sector.repository.interface';
 import { TableRepository as ITableRepository } from '../../ports/repositories/table.repository.interface';
 import { BookingRepository as IBookingRepository } from '../../ports/repositories/booking.repository.interface';
+import { BlackoutRepository as IBlackoutRepository } from '../../ports/repositories/blackout.repository.interface';
 import { ServiceWindowRepository as IServiceWindowRepository } from '../../ports/repositories/service-window.repository.interface';
 import {
   RESTAURANT_REPOSITORY,
   SECTOR_REPOSITORY,
   TABLE_REPOSITORY,
   BOOKING_REPOSITORY,
+  BLACKOUT_REPOSITORY,
   SERVICE_WINDOW_REPOSITORY,
 } from '../../tokens';
 import { GapDiscoveryService } from '../../domain/services/gap-discovery.service';
@@ -36,6 +38,8 @@ export class BookingQueryService {
     private readonly tableRepository: ITableRepository,
     @Inject(BOOKING_REPOSITORY)
     private readonly bookingRepository: IBookingRepository,
+    @Inject(BLACKOUT_REPOSITORY)
+    private readonly blackoutRepository: IBlackoutRepository,
     @Inject(SERVICE_WINDOW_REPOSITORY)
     private readonly serviceWindowRepository: IServiceWindowRepository,
     private readonly gapDiscoveryService: GapDiscoveryService,
@@ -106,6 +110,14 @@ export class BookingQueryService {
       restaurant.timezone,
     );
 
+    // Get all blackouts for the date (using restaurant timezone)
+    const blackouts = await this.blackoutRepository.findByDate(
+      restaurant.id,
+      sector.id,
+      date,
+      restaurant.timezone,
+    );
+
     // Get service windows for the restaurant
     const serviceWindows =
       await this.serviceWindowRepository.findByRestaurantId(restaurant.id);
@@ -123,6 +135,8 @@ export class BookingQueryService {
     const candidates = this.findCandidates(
       tables,
       bookings,
+      blackouts,
+      sector.id,
       date,
       query.duration,
       query.partySize,
@@ -212,6 +226,13 @@ export class BookingQueryService {
       end: Date;
       status: string;
     }>,
+    blackouts: Array<{
+      tableIds: string[];
+      sectorId: string | null;
+      start: Date;
+      end: Date;
+    }>,
+    sectorId: string,
     date: Date,
     durationMinutes: number,
     partySize: number,
@@ -227,7 +248,9 @@ export class BookingQueryService {
       if (partySize >= table.minSize && partySize <= table.maxSize) {
         const gaps = this.gapDiscoveryService.findGapsForTable(
           bookings as any,
+          blackouts as any,
           table.id,
+          sectorId,
           date,
           durationMinutes,
           restaurant as any,
@@ -257,6 +280,8 @@ export class BookingQueryService {
     const comboCandidates = this.findComboCandidates(
       tables,
       bookings,
+      blackouts,
+      sectorId,
       date,
       durationMinutes,
       partySize,
@@ -304,6 +329,13 @@ export class BookingQueryService {
       end: Date;
       status: string;
     }>,
+    blackouts: Array<{
+      tableIds: string[];
+      sectorId: string | null;
+      start: Date;
+      end: Date;
+    }>,
+    sectorId: string,
     date: Date,
     durationMinutes: number,
     partySize: number,
@@ -325,7 +357,9 @@ export class BookingQueryService {
         const tableIds = combo.map((t) => t.id);
         const gaps = this.gapDiscoveryService.findComboGaps(
           bookings as any,
+          blackouts as any,
           tableIds,
+          sectorId,
           date,
           durationMinutes,
           restaurant as any,

@@ -11,12 +11,14 @@ import { RestaurantRepository as IRestaurantRepository } from '../../ports/repos
 import { SectorRepository as ISectorRepository } from '../../ports/repositories/sector.repository.interface';
 import { TableRepository as ITableRepository } from '../../ports/repositories/table.repository.interface';
 import { BookingRepository as IBookingRepository } from '../../ports/repositories/booking.repository.interface';
+import { BlackoutRepository as IBlackoutRepository } from '../../ports/repositories/blackout.repository.interface';
 import { ServiceWindowRepository as IServiceWindowRepository } from '../../ports/repositories/service-window.repository.interface';
 import {
   RESTAURANT_REPOSITORY,
   SECTOR_REPOSITORY,
   TABLE_REPOSITORY,
   BOOKING_REPOSITORY,
+  BLACKOUT_REPOSITORY,
   SERVICE_WINDOW_REPOSITORY,
 } from '../../tokens';
 import { WokiBrainSelectorService } from '../../domain/services/wokibrain-selector.service';
@@ -43,6 +45,8 @@ export class BookingCommandService {
     private readonly tableRepository: ITableRepository,
     @Inject(BOOKING_REPOSITORY)
     private readonly bookingRepository: IBookingRepository,
+    @Inject(BLACKOUT_REPOSITORY)
+    private readonly blackoutRepository: IBlackoutRepository,
     @Inject(SERVICE_WINDOW_REPOSITORY)
     private readonly serviceWindowRepository: IServiceWindowRepository,
     private readonly wokiBrainSelectorService: WokiBrainSelectorService,
@@ -110,9 +114,16 @@ export class BookingCommandService {
       });
     }
 
-    // Get all bookings for the date ONCE and reuse them
+    // Get all bookings and blackouts for the date ONCE and reuse them
     // This ensures consistency between candidate selection and verification
     const bookings = await this.bookingRepository.findByDate(
+      request.restaurantId,
+      request.sectorId,
+      date,
+      restaurant.timezone,
+    );
+
+    const blackouts = await this.blackoutRepository.findByDate(
       request.restaurantId,
       request.sectorId,
       date,
@@ -126,6 +137,7 @@ export class BookingCommandService {
       sector,
       date,
       bookings,
+      blackouts,
     );
 
     if (!candidate) {
@@ -160,9 +172,16 @@ export class BookingCommandService {
 
     try {
       // Re-verify capacity (double-check after acquiring lock)
-      // Re-query ALL bookings for the date to check for any new bookings created between
+      // Re-query ALL bookings and blackouts for the date to check for any new bookings/blackouts created between
       // candidate selection and lock acquisition. Use the same query method as initial query.
       const currentBookings = await this.bookingRepository.findByDate(
+        request.restaurantId,
+        request.sectorId,
+        date,
+        restaurant.timezone,
+      );
+
+      const currentBlackouts = await this.blackoutRepository.findByDate(
         request.restaurantId,
         request.sectorId,
         date,
@@ -176,9 +195,23 @@ export class BookingCommandService {
           b.tableIds.some((id) => candidate.tableIds.includes(id)),
       );
 
+      // Filter blackouts that affect the candidate's tables
+      const relevantBlackouts = currentBlackouts.filter((bl) => {
+        // Check if any candidate table is in the blackout's tableIds
+        if (bl.tableIds.some((id) => candidate.tableIds.includes(id))) {
+          return true;
+        }
+        // If blackout has empty tableIds and sectorId matches, it's a whole-sector blackout
+        if (bl.sectorId === request.sectorId && bl.tableIds.length === 0) {
+          return true;
+        }
+        return false;
+      });
+
       const stillAvailable = this.verifyCapacityStillAvailable(
         candidate,
         relevantBookings,
+        relevantBlackouts,
       );
 
       if (!stillAvailable) {
@@ -223,6 +256,12 @@ export class BookingCommandService {
     sector: { id: string },
     date: Date,
     bookings: Booking[],
+    blackouts: Array<{
+      tableIds: string[];
+      sectorId: string | null;
+      start: Date;
+      end: Date;
+    }>,
   ): Promise<ComboCandidate | null> {
     // Get all tables in sector
     const tables = await this.tableRepository.findBySectorId(sector.id);
@@ -246,6 +285,8 @@ export class BookingCommandService {
     const candidates = this.bookingQueryService.findCandidates(
       tables,
       bookings,
+      blackouts,
+      sector.id,
       date,
       request.durationMinutes,
       request.partySize,
@@ -262,16 +303,10 @@ export class BookingCommandService {
   private verifyCapacityStillAvailable(
     candidate: ComboCandidate,
     bookings: Booking[],
+    blackouts: Array<{ start: Date; end: Date }>,
   ): boolean {
-    // Filter bookings that involve any of the candidate's tables
-    const relevantBookings = bookings.filter(
-      (b) =>
-        b.status === BookingStatus.CONFIRMED &&
-        b.tableIds.some((id) => candidate.tableIds.includes(id)),
-    );
-
-    // Check if candidate interval still has no conflicts
-    const conflicts = relevantBookings.filter((b) =>
+    // Check if candidate interval conflicts with any bookings
+    const bookingConflicts = bookings.filter((b) =>
       this.intervalsOverlap(
         candidate.interval.start,
         candidate.interval.end,
@@ -280,7 +315,17 @@ export class BookingCommandService {
       ),
     );
 
-    return conflicts.length === 0;
+    // Check if candidate interval conflicts with any blackouts
+    const blackoutConflicts = blackouts.filter((bl) =>
+      this.intervalsOverlap(
+        candidate.interval.start,
+        candidate.interval.end,
+        bl.start,
+        bl.end,
+      ),
+    );
+
+    return bookingConflicts.length === 0 && blackoutConflicts.length === 0;
   }
 
   private intervalsOverlap(
