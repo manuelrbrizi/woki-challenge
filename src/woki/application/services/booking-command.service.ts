@@ -68,13 +68,6 @@ export class BookingCommandService {
       );
     }
 
-    // Validate duration range
-    if (request.durationMinutes < 30 || request.durationMinutes > 180) {
-      throw new BadRequestException(
-        'Duration must be between 30 and 180 minutes',
-      );
-    }
-
     // Check idempotency
     if (idempotencyKey) {
       const cached = await this.idempotencyService.get(idempotencyKey, request);

@@ -60,11 +60,6 @@ export class BookingQueryService {
       throw new Error('Duration must be a multiple of 15 minutes');
     }
 
-    // Validate duration range (30-180 suggested)
-    if (query.duration < 30 || query.duration > 180) {
-      throw new Error('Duration must be between 30 and 180 minutes');
-    }
-
     // Get restaurant
     const restaurant = await this.restaurantRepository.findById(
       query.restaurantId,
