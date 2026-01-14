@@ -148,34 +148,56 @@ export class BookingCommandService {
     // Start assignment time measurement (from candidate selection to booking creation)
     const assignmentStartTime = Date.now();
 
-    // Create lock key
-    const lockKey = this.createLockKey(
-      request.restaurantId,
-      request.sectorId,
-      candidate.tableIds,
-      candidate.interval.start,
-    );
+    // Acquire locks for all tables in the candidate (sorted to prevent deadlocks)
+    const sortedTableIds = [...candidate.tableIds].sort();
+    const acquiredLocks: Array<{ release: () => void; waitTimeMs: number }> =
+      [];
+    let maxWaitTimeMs = 0;
 
-    // Acquire lock (with timeout handling)
-    let releaseLock: (() => void) | null = null;
     try {
-      const lockResult = await this.lockManagerService.acquire(lockKey);
-      releaseLock = lockResult.release;
-      // Record lock wait time (only if we waited)
-      if (lockResult.waitTimeMs > 0) {
-        this.metricsService.recordLockWaitTime(lockResult.waitTimeMs);
+      // Acquire locks sequentially for each table
+      for (const tableId of sortedTableIds) {
+        const lockKey = this.createTableLockKey(
+          request.restaurantId,
+          request.sectorId,
+          tableId,
+          candidate.interval.start,
+        );
+
+        try {
+          const lockResult = await this.lockManagerService.acquire(lockKey);
+          acquiredLocks.push(lockResult);
+          maxWaitTimeMs = Math.max(maxWaitTimeMs, lockResult.waitTimeMs);
+        } catch (error) {
+          // Release all previously acquired locks before throwing
+          for (const lock of acquiredLocks) {
+            lock.release();
+          }
+          acquiredLocks.length = 0;
+
+          if (error instanceof Error && error.message === 'Lock timeout') {
+            // For timeout cases, we can't get the exact wait time since the error
+            // is thrown before returning. We record the timeout separately.
+            this.metricsService.recordLockTimeout();
+            this.metricsService.recordConflict('table_locked');
+            throw new ConflictException({
+              error: 'table_locked',
+              detail:
+                'Table is currently being booked by another request. Please try again.',
+            });
+          }
+          throw error;
+        }
+      }
+
+      // Record lock wait time (use max wait time as it represents the longest wait)
+      if (maxWaitTimeMs > 0) {
+        this.metricsService.recordLockWaitTime(maxWaitTimeMs);
       }
     } catch (error) {
-      if (error instanceof Error && error.message === 'Lock timeout') {
-        // For timeout cases, we can't get the exact wait time since the error
-        // is thrown before returning. We record the timeout separately.
-        this.metricsService.recordLockTimeout();
-        this.metricsService.recordConflict('table_locked');
-        throw new ConflictException({
-          error: 'table_locked',
-          detail:
-            'Table is currently being booked by another request. Please try again.',
-        });
+      // Ensure all locks are released if we haven't already
+      for (const lock of acquiredLocks) {
+        lock.release();
       }
       throw error;
     }
@@ -260,8 +282,9 @@ export class BookingCommandService {
 
       return this.toResponse(savedBooking);
     } finally {
-      if (releaseLock) {
-        releaseLock();
+      // Release all acquired locks
+      for (const lock of acquiredLocks) {
+        lock.release();
       }
     }
   }
@@ -353,15 +376,18 @@ export class BookingCommandService {
     return start1 < end2 && end1 > start2;
   }
 
-  private createLockKey(
+  /**
+   * Create a lock key for a single table at a specific time.
+   * Format: {restaurantId}|{sectorId}|{tableId}|{start}
+   */
+  private createTableLockKey(
     restaurantId: string,
     sectorId: string,
-    tableIds: string[],
+    tableId: string,
     start: Date,
   ): string {
-    const sortedTableIds = [...tableIds].sort().join('+');
     const startStr = start.toISOString();
-    return `${restaurantId}|${sectorId}|${sortedTableIds}|${startStr}`;
+    return `${restaurantId}|${sectorId}|${tableId}|${startStr}`;
   }
 
   private toResponse(booking: Booking): CreateBookingResponse {
