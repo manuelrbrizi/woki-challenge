@@ -122,6 +122,7 @@ describe('WokiBrain Metrics API (e2e)', () => {
       // Create a booking
       await request(app.getHttpServer())
         .post('/api/woki/bookings')
+        .set('Idempotency-Key', `test-metrics-created-${Date.now()}`)
         .send({
           restaurantId: 'R1',
           sectorId: 'S1',
@@ -145,6 +146,7 @@ describe('WokiBrain Metrics API (e2e)', () => {
       // Create a booking first
       const createResponse = await request(app.getHttpServer())
         .post('/api/woki/bookings')
+        .set('Idempotency-Key', `test-metrics-cancelled-${Date.now()}`)
         .send({
           restaurantId: 'R1',
           sectorId: 'S1',
@@ -174,6 +176,7 @@ describe('WokiBrain Metrics API (e2e)', () => {
       // Try to book when no capacity (should fail with 409)
       await request(app.getHttpServer())
         .post('/api/woki/bookings')
+        .set('Idempotency-Key', `test-metrics-conflict-${Date.now()}`)
         .send({
           restaurantId: 'R1',
           sectorId: 'S1',
@@ -197,6 +200,7 @@ describe('WokiBrain Metrics API (e2e)', () => {
       for (let i = 0; i < 3; i++) {
         await request(app.getHttpServer())
           .post('/api/woki/bookings')
+          .set('Idempotency-Key', `test-metrics-samples-${i}-${Date.now()}`)
           .send({
             restaurantId: 'R1',
             sectorId: 'S1',
@@ -221,6 +225,7 @@ describe('WokiBrain Metrics API (e2e)', () => {
       for (let i = 0; i < 20; i++) {
         await request(app.getHttpServer())
           .post('/api/woki/bookings')
+          .set('Idempotency-Key', `test-metrics-p95-${i}-${Date.now()}`)
           .send({
             restaurantId: 'R1',
             sectorId: 'S1',
@@ -245,16 +250,19 @@ describe('WokiBrain Metrics API (e2e)', () => {
     it('should track lock wait times', async () => {
       // Create bookings that may contend for locks
       // This will generate lock wait time samples
-      const promises = Array.from({ length: 5 }, () =>
-        request(app.getHttpServer()).post('/api/woki/bookings').send({
-          restaurantId: 'R1',
-          sectorId: 'S1',
-          partySize: 2,
-          durationMinutes: 60,
-          date: '2025-10-22',
-          windowStart: '21:15',
-          windowEnd: '22:15',
-        }),
+      const promises = Array.from({ length: 5 }, (_, i) =>
+        request(app.getHttpServer())
+          .post('/api/woki/bookings')
+          .set('Idempotency-Key', `test-metrics-locks-${i}-${Date.now()}`)
+          .send({
+            restaurantId: 'R1',
+            sectorId: 'S1',
+            partySize: 2,
+            durationMinutes: 60,
+            date: '2025-10-22',
+            windowStart: '21:15',
+            windowEnd: '22:15',
+          }),
       );
 
       await Promise.allSettled(promises);

@@ -59,27 +59,29 @@ export class BookingCommandService {
 
   async createBooking(
     request: CreateBookingRequest,
-    idempotencyKey?: string,
+    idempotencyKey: string,
   ): Promise<CreateBookingResponse> {
     // Validate duration is multiple of 15
     if (request.durationMinutes % 15 !== 0) {
-      throw new BadRequestException(
-        'Duration must be a multiple of 15 minutes',
-      );
+      throw new BadRequestException({
+        error: 'invalid_input',
+        detail: 'Duration must be a multiple of 15 minutes',
+      });
     }
 
-    // Check idempotency
-    if (idempotencyKey) {
-      const cached = await this.idempotencyService.get(idempotencyKey, request);
-      if (cached) {
-        return this.toResponse(cached);
-      }
+    // Check idempotency (key is now required, so always check)
+    const cached = await this.idempotencyService.get(idempotencyKey, request);
+    if (cached) {
+      return this.toResponse(cached);
     }
 
     // Parse date
     const date = parseISO(request.date);
     if (isNaN(date.getTime())) {
-      throw new BadRequestException('Invalid date format');
+      throw new BadRequestException({
+        error: 'invalid_input',
+        detail: 'Invalid date format',
+      });
     }
 
     // Get restaurant
@@ -253,14 +255,8 @@ export class BookingCommandService {
       // Record booking created
       this.metricsService.recordBookingCreated();
 
-      // Store idempotency key
-      if (idempotencyKey) {
-        await this.idempotencyService.set(
-          idempotencyKey,
-          savedBooking,
-          request,
-        );
-      }
+      // Store idempotency key (required, so always store)
+      await this.idempotencyService.set(idempotencyKey, savedBooking, request);
 
       return this.toResponse(savedBooking);
     } finally {

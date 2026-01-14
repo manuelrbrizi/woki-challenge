@@ -376,6 +376,7 @@ describe('WokiBrain Blackout API (e2e)', () => {
       // Try to book T1 during the blackout period
       await request(app.getHttpServer())
         .post('/api/woki/bookings')
+        .set('Idempotency-Key', `test-blackout-t1-${Date.now()}`)
         .send({
           restaurantId: 'R1',
           sectorId: 'S1',
@@ -408,6 +409,7 @@ describe('WokiBrain Blackout API (e2e)', () => {
       // Try to book any table during the blackout period
       await request(app.getHttpServer())
         .post('/api/woki/bookings')
+        .set('Idempotency-Key', `test-blackout-sector-${Date.now()}`)
         .send({
           restaurantId: 'R1',
           sectorId: 'S1',
@@ -440,6 +442,7 @@ describe('WokiBrain Blackout API (e2e)', () => {
       // Book T1 before the blackout (using lunch window)
       await request(app.getHttpServer())
         .post('/api/woki/bookings')
+        .set('Idempotency-Key', `test-blackout-outside-${Date.now()}`)
         .send({
           restaurantId: 'R1',
           sectorId: 'S1',
@@ -493,6 +496,7 @@ describe('WokiBrain Blackout API (e2e)', () => {
       // Create a booking first
       const bookingResponse = await request(app.getHttpServer())
         .post('/api/woki/bookings')
+        .set('Idempotency-Key', `test-blackout-overlap-${Date.now()}`)
         .send({
           restaurantId: 'R1',
           sectorId: 'S1',

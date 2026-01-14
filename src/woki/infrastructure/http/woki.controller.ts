@@ -158,12 +158,23 @@ export class WokiController {
   @ApiResponse({ status: 422, description: 'Outside service window' })
   async createBooking(
     @Body() body: CreateBookingRequest,
-    @Headers('idempotency-key') idempotencyKey?: string,
+    @Headers('idempotency-key') idempotencyKey: string,
   ) {
     const requestId = randomUUID();
     const startTime = Date.now();
 
     try {
+      // Validate idempotency key is provided
+      if (
+        !idempotencyKey ||
+        (typeof idempotencyKey === 'string' && idempotencyKey.trim() === '')
+      ) {
+        throw new BadRequestException({
+          error: 'invalid_input',
+          detail: 'Idempotency-Key header is required',
+        });
+      }
+
       // Validate body
       const validated = CreateBookingSchema.parse(body);
 
@@ -206,6 +217,10 @@ export class WokiController {
       }
 
       if (error instanceof UnprocessableEntityException) {
+        throw error;
+      }
+
+      if (error instanceof BadRequestException) {
         throw error;
       }
 

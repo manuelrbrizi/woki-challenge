@@ -100,6 +100,7 @@ describe('WokiBrain Booking API (e2e)', () => {
     it('should successfully book a single table for party of 2', async () => {
       const response = await request(app.getHttpServer())
         .post('/api/woki/bookings')
+        .set('Idempotency-Key', `test-single-2-${Date.now()}`)
         .send({
           restaurantId: 'R1',
           sectorId: 'S1',
@@ -128,6 +129,7 @@ describe('WokiBrain Booking API (e2e)', () => {
     it('should book table T4 for party of 5 (fits perfectly)', async () => {
       const response = await request(app.getHttpServer())
         .post('/api/woki/bookings')
+        .set('Idempotency-Key', `test-t4-5-${Date.now()}`)
         .send({
           restaurantId: 'R1',
           sectorId: 'S1',
@@ -151,6 +153,7 @@ describe('WokiBrain Booking API (e2e)', () => {
       // Try after 21:15 or use a different time slot
       const response = await request(app.getHttpServer())
         .post('/api/woki/bookings')
+        .set('Idempotency-Key', `test-combo-7-${Date.now()}`)
         .send({
           restaurantId: 'R1',
           sectorId: 'S1',
@@ -212,6 +215,7 @@ describe('WokiBrain Booking API (e2e)', () => {
       // Book T2 starting at 21:15 (touching at end)
       const response = await request(app.getHttpServer())
         .post('/api/woki/bookings')
+        .set('Idempotency-Key', `test-touching-1-${Date.now()}`)
         .send({
           restaurantId: 'R1',
           sectorId: 'S1',
@@ -239,6 +243,7 @@ describe('WokiBrain Booking API (e2e)', () => {
       // First booking
       const firstBooking = await request(app.getHttpServer())
         .post('/api/woki/bookings')
+        .set('Idempotency-Key', `test-touching-2-first-${Date.now()}`)
         .send({
           restaurantId: 'R1',
           sectorId: 'S1',
@@ -253,6 +258,7 @@ describe('WokiBrain Booking API (e2e)', () => {
       // Second booking starting exactly when first ends
       const secondBooking = await request(app.getHttpServer())
         .post('/api/woki/bookings')
+        .set('Idempotency-Key', `test-touching-2-second-${Date.now()}`)
         .send({
           restaurantId: 'R1',
           sectorId: 'S1',
@@ -423,8 +429,14 @@ describe('WokiBrain Booking API (e2e)', () => {
 
       // Fire two requests in parallel
       const [response1, response2] = await Promise.allSettled([
-        request(app.getHttpServer()).post('/api/woki/bookings').send(payload),
-        request(app.getHttpServer()).post('/api/woki/bookings').send(payload),
+        request(app.getHttpServer())
+          .post('/api/woki/bookings')
+          .set('Idempotency-Key', `test-concurrent-1-${Date.now()}`)
+          .send(payload),
+        request(app.getHttpServer())
+          .post('/api/woki/bookings')
+          .set('Idempotency-Key', `test-concurrent-2-${Date.now()}`)
+          .send(payload),
       ]);
 
       // One should succeed (201), one should fail (409)
@@ -458,6 +470,7 @@ describe('WokiBrain Booking API (e2e)', () => {
     it('should return 422 when window is outside service hours', async () => {
       await request(app.getHttpServer())
         .post('/api/woki/bookings')
+        .set('Idempotency-Key', `test-outside-1-${Date.now()}`)
         .send({
           restaurantId: 'R1',
           sectorId: 'S1',
@@ -476,6 +489,7 @@ describe('WokiBrain Booking API (e2e)', () => {
     it('should return 422 when window extends beyond service hours', async () => {
       await request(app.getHttpServer())
         .post('/api/woki/bookings')
+        .set('Idempotency-Key', `test-outside-2-${Date.now()}`)
         .send({
           restaurantId: 'R1',
           sectorId: 'S1',
@@ -494,6 +508,7 @@ describe('WokiBrain Booking API (e2e)', () => {
     it('should allow booking within service window', async () => {
       await request(app.getHttpServer())
         .post('/api/woki/bookings')
+        .set('Idempotency-Key', `test-within-window-${Date.now()}`)
         .send({
           restaurantId: 'R1',
           sectorId: 'S1',
@@ -509,9 +524,53 @@ describe('WokiBrain Booking API (e2e)', () => {
 
   describe('Additional Test Cases', () => {
     describe('Validation Errors', () => {
+      it('should return 400 for missing idempotency key', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/woki/bookings')
+          .send({
+            restaurantId: 'R1',
+            sectorId: 'S1',
+            partySize: 2,
+            durationMinutes: 60,
+            date: '2025-10-22',
+          })
+          .expect(400);
+
+        // Check error structure - detail might be string or object
+        expect(response.body.error).toBe('invalid_input');
+        const detail =
+          typeof response.body.detail === 'string'
+            ? response.body.detail
+            : JSON.stringify(response.body.detail);
+        expect(detail).toContain('Idempotency-Key');
+      });
+
+      it('should return 400 for empty idempotency key', async () => {
+        const response = await request(app.getHttpServer())
+          .post('/api/woki/bookings')
+          .set('Idempotency-Key', '')
+          .send({
+            restaurantId: 'R1',
+            sectorId: 'S1',
+            partySize: 2,
+            durationMinutes: 60,
+            date: '2025-10-22',
+          })
+          .expect(400);
+
+        // Check error structure - detail might be string or object
+        expect(response.body.error).toBe('invalid_input');
+        const detail =
+          typeof response.body.detail === 'string'
+            ? response.body.detail
+            : JSON.stringify(response.body.detail);
+        expect(detail).toContain('Idempotency-Key');
+      });
+
       it('should return 400 for invalid party size', async () => {
         await request(app.getHttpServer())
           .post('/api/woki/bookings')
+          .set('Idempotency-Key', `test-invalid-party-${Date.now()}`)
           .send({
             restaurantId: 'R1',
             sectorId: 'S1',
@@ -528,6 +587,7 @@ describe('WokiBrain Booking API (e2e)', () => {
       it('should return 400 for invalid date format', async () => {
         await request(app.getHttpServer())
           .post('/api/woki/bookings')
+          .set('Idempotency-Key', `test-invalid-date-${Date.now()}`)
           .send({
             restaurantId: 'R1',
             sectorId: 'S1',
@@ -541,6 +601,7 @@ describe('WokiBrain Booking API (e2e)', () => {
       it('should return 400 for non-grid duration', async () => {
         await request(app.getHttpServer())
           .post('/api/woki/bookings')
+          .set('Idempotency-Key', `test-invalid-duration-${Date.now()}`)
           .send({
             restaurantId: 'R1',
             sectorId: 'S1',
@@ -559,6 +620,7 @@ describe('WokiBrain Booking API (e2e)', () => {
       it('should return 404 for non-existent restaurant', async () => {
         await request(app.getHttpServer())
           .post('/api/woki/bookings')
+          .set('Idempotency-Key', `test-not-found-rest-${Date.now()}`)
           .send({
             restaurantId: 'R999',
             sectorId: 'S1',
@@ -575,6 +637,7 @@ describe('WokiBrain Booking API (e2e)', () => {
       it('should return 404 for non-existent sector', async () => {
         await request(app.getHttpServer())
           .post('/api/woki/bookings')
+          .set('Idempotency-Key', `test-not-found-sector-${Date.now()}`)
           .send({
             restaurantId: 'R1',
             sectorId: 'S999',
@@ -595,6 +658,7 @@ describe('WokiBrain Booking API (e2e)', () => {
         // This test might need adjustment based on actual availability
         await request(app.getHttpServer())
           .post('/api/woki/bookings')
+          .set('Idempotency-Key', `test-no-capacity-${Date.now()}`)
           .send({
             restaurantId: 'R1',
             sectorId: 'S1',
@@ -657,6 +721,7 @@ describe('WokiBrain Booking API (e2e)', () => {
         // Create a booking first
         await request(app.getHttpServer())
           .post('/api/woki/bookings')
+          .set('Idempotency-Key', `test-list-booking-${Date.now()}`)
           .send({
             restaurantId: 'R1',
             sectorId: 'S1',
