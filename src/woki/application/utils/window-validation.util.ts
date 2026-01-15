@@ -25,22 +25,23 @@ export function validateWindowWithinServiceHours(
   const reqEndMinutes = reqEndHour * 60 + reqEndMin;
 
   // Check if the requested window overlaps with any service window
-  const isWithinAnyWindow = serviceWindows.some((sw) => {
+  // Overlap occurs when: reqStart < swEnd && reqEnd > swStart
+  const overlapsAnyWindow = serviceWindows.some((sw) => {
     const [swStartHour, swStartMin] = sw.start.split(':').map(Number);
     const [swEndHour, swEndMin] = sw.end.split(':').map(Number);
     const swStartMinutes = swStartHour * 60 + swStartMin;
     const swEndMinutes = swEndHour * 60 + swEndMin;
 
-    // Check if requested window is within this service window
-    // Window is valid if it starts and ends within the service window
+    // Check if requested window overlaps with this service window
+    // Overlap: reqStart < swEnd && reqEnd > swStart
     return (
-      reqStartMinutes >= swStartMinutes &&
-      reqEndMinutes <= swEndMinutes &&
+      reqStartMinutes < swEndMinutes &&
+      reqEndMinutes > swStartMinutes &&
       reqStartMinutes < reqEndMinutes
     );
   });
 
-  if (!isWithinAnyWindow) {
+  if (!overlapsAnyWindow) {
     throw new UnprocessableEntityException({
       error: 'outside_service_window',
       detail: 'Window does not intersect service hours',

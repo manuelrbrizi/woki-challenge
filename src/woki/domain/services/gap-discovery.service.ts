@@ -283,12 +283,15 @@ export class GapDiscoveryService {
     window: TimeInterval,
     durationMinutes: number,
   ): TimeInterval[] {
-    // 1. Normalize existing CONFIRMED bookings to [start, end) and sort
+    // 1. Normalize existing CONFIRMED bookings/blackouts to [start, end) and clip to window boundaries
+    // Filter bookings/blackouts that overlap with the window, then clip them to the window
     const normalizedBookings = bookings
       .filter((b) => b.start < window.end && b.end > window.start)
       .map((b) => ({
-        start: b.start,
-        end: b.end,
+        // Clip start to window start if booking/blackout starts before window
+        start: b.start > window.start ? b.start : window.start,
+        // Clip end to window end if booking/blackout ends after window
+        end: b.end < window.end ? b.end : window.end,
       }))
       .sort((a, b) => a.start.getTime() - b.start.getTime());
 
