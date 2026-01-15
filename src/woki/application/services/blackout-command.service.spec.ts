@@ -5,13 +5,16 @@ import { RestaurantRepository } from '../../ports/repositories/restaurant.reposi
 import { SectorRepository } from '../../ports/repositories/sector.repository.interface';
 import { TableRepository } from '../../ports/repositories/table.repository.interface';
 import { BlackoutRepository } from '../../ports/repositories/blackout.repository.interface';
+import { BookingRepository } from '../../ports/repositories/booking.repository.interface';
 import {
   RESTAURANT_REPOSITORY,
   SECTOR_REPOSITORY,
   TABLE_REPOSITORY,
   BLACKOUT_REPOSITORY,
+  BOOKING_REPOSITORY,
 } from '../../tokens';
 import { BlackoutReason } from '../../domain/types/blackout-reason.enum';
+import { BookingStatus } from '../../domain/types/booking-status.enum';
 
 describe('BlackoutCommandService', () => {
   let service: BlackoutCommandService;
@@ -19,6 +22,7 @@ describe('BlackoutCommandService', () => {
   let sectorRepository: jest.Mocked<SectorRepository>;
   let tableRepository: jest.Mocked<TableRepository>;
   let blackoutRepository: jest.Mocked<BlackoutRepository>;
+  let bookingRepository: jest.Mocked<BookingRepository>;
 
   beforeEach(async () => {
     const mockRestaurantRepository = {
@@ -34,6 +38,15 @@ describe('BlackoutCommandService', () => {
     };
 
     const mockBlackoutRepository = {
+      findById: jest.fn(),
+      findByDate: jest.fn(),
+      findByTableIdsAndDate: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    };
+
+    const mockBookingRepository = {
       findById: jest.fn(),
       findByDate: jest.fn(),
       findByTableIdsAndDate: jest.fn(),
@@ -61,6 +74,10 @@ describe('BlackoutCommandService', () => {
           provide: BLACKOUT_REPOSITORY,
           useValue: mockBlackoutRepository,
         },
+        {
+          provide: BOOKING_REPOSITORY,
+          useValue: mockBookingRepository,
+        },
       ],
     }).compile();
 
@@ -69,6 +86,7 @@ describe('BlackoutCommandService', () => {
     sectorRepository = module.get(SECTOR_REPOSITORY);
     tableRepository = module.get(TABLE_REPOSITORY);
     blackoutRepository = module.get(BLACKOUT_REPOSITORY);
+    bookingRepository = module.get(BOOKING_REPOSITORY);
   });
 
   it('should be defined', () => {
@@ -97,6 +115,9 @@ describe('BlackoutCommandService', () => {
       restaurantRepository.findById.mockResolvedValue(mockRestaurant as any);
       sectorRepository.findById.mockResolvedValue(mockSector as any);
       tableRepository.findBySectorId.mockResolvedValue(mockTables as any);
+      // Mock booking repository to return empty array by default (no overlapping bookings)
+      bookingRepository.findByDate.mockResolvedValue([]);
+      bookingRepository.update.mockResolvedValue(undefined as any);
     });
 
     it('should create a table-specific blackout', async () => {
@@ -133,7 +154,9 @@ describe('BlackoutCommandService', () => {
       expect(result.id).toBe('BLK_TEST123');
       expect(result.tableIds).toEqual(['T1', 'T2']);
       expect(result.reason).toBe(BlackoutReason.MAINTENANCE);
+      expect(result.cancelledBookingIds).toEqual([]);
       expect(blackoutRepository.create).toHaveBeenCalled();
+      expect(bookingRepository.findByDate).toHaveBeenCalled();
     });
 
     it('should create a sector-wide blackout', async () => {
@@ -169,7 +192,9 @@ describe('BlackoutCommandService', () => {
       expect(result).toBeDefined();
       expect(result.tableIds).toEqual([]);
       expect(result.sectorId).toBe('S1');
+      expect(result.cancelledBookingIds).toEqual([]);
       expect(blackoutRepository.create).toHaveBeenCalled();
+      expect(bookingRepository.findByDate).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if restaurant not found', async () => {
@@ -291,6 +316,64 @@ describe('BlackoutCommandService', () => {
 
       await expect(service.createBlackout(request)).rejects.toThrow(
         BadRequestException,
+      );
+    });
+
+    it('should cancel overlapping bookings when creating a blackout', async () => {
+      const request = {
+        restaurantId: 'R1',
+        sectorId: 'S1',
+        tableIds: ['T1'],
+        date: '2025-10-22',
+        startTime: '20:00',
+        endTime: '22:00',
+        reason: BlackoutReason.MAINTENANCE,
+      };
+
+      // Mock overlapping booking
+      const overlappingBooking = {
+        id: 'BK_OVERLAP1',
+        restaurantId: 'R1',
+        sectorId: 'S1',
+        tableIds: ['T1'],
+        partySize: 2,
+        start: new Date('2025-10-22T23:30:00Z'), // 20:30 local time, overlaps with blackout
+        end: new Date('2025-10-23T00:30:00Z'), // 21:30 local time
+        durationMinutes: 60,
+        status: BookingStatus.CONFIRMED,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      bookingRepository.findByDate.mockResolvedValue([
+        overlappingBooking as any,
+      ]);
+      bookingRepository.update.mockResolvedValue(overlappingBooking as any);
+
+      const savedBlackout = {
+        id: 'BLK_TEST789',
+        restaurantId: 'R1',
+        sectorId: 'S1',
+        tableIds: ['T1'],
+        start: new Date('2025-10-22T23:00:00Z'),
+        end: new Date('2025-10-23T01:00:00Z'),
+        reason: BlackoutReason.MAINTENANCE,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      blackoutRepository.create.mockResolvedValue(savedBlackout as any);
+
+      const result = await service.createBlackout(request);
+
+      expect(result.cancelledBookingIds).toEqual(['BK_OVERLAP1']);
+      expect(bookingRepository.findByDate).toHaveBeenCalled();
+      expect(bookingRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'BK_OVERLAP1',
+          status: BookingStatus.CANCELLED,
+        }),
       );
     });
   });
