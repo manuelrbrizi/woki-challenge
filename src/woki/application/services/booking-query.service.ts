@@ -247,7 +247,13 @@ export class BookingQueryService {
 
     // Single table candidates
     for (const table of tables) {
-      if (partySize >= table.minSize && partySize <= table.maxSize) {
+      // Special case: allow single-person parties (partySize=1) to use tables
+      // even if minSize > 1, as long as maxSize >= 1
+      const canUseTable =
+        partySize === 1
+          ? partySize <= table.maxSize
+          : partySize >= table.minSize && partySize <= table.maxSize;
+      if (canUseTable) {
         const gaps = this.gapDiscoveryService.findGapsForTable(
           bookings as any,
           blackouts as any,
