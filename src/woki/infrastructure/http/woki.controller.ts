@@ -47,13 +47,15 @@ import { randomUUID } from 'crypto';
 import { Inject } from '@nestjs/common';
 import { BOOKING_REPOSITORY } from '../../tokens';
 
-// Helper function to get throttle limits based on environment
-// In test mode, use much higher limits to avoid rate limiting in tests
+// Helper function to get throttle limits based on environment.
+// By default, tests run with much higher limits to avoid rate limiting unrelated e2e suites.
+// Set ENABLE_RATE_LIMITING=true to force production-like limits (used by rate limiting e2e tests).
 const getThrottleConfig = (defaultLimit: number) => {
   const isTest = process.env.NODE_ENV === 'test';
+  const relaxInTests = isTest && process.env.ENABLE_RATE_LIMITING !== 'true';
   return {
     default: {
-      limit: isTest ? 10000 : defaultLimit,
+      limit: relaxInTests ? 10000 : defaultLimit,
       ttl: 60000,
     },
   };

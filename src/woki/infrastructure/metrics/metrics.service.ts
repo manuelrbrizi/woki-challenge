@@ -15,6 +15,20 @@ export class MetricsService {
   // Maximum samples to keep in memory (circular buffer approach)
   private readonly MAX_SAMPLES = 1000;
 
+  /**
+   * Resets all in-memory counters and samples.
+   * Intended for test isolation (e2e/units) since this service is stateful.
+   */
+  reset(): void {
+    this.bookingsCreated = 0;
+    this.bookingsCancelled = 0;
+    this.conflictsNoCapacity = 0;
+    this.conflictsTableLocked = 0;
+    this.lockTimeouts = 0;
+    this.assignmentTimes = [];
+    this.lockWaitTimes = [];
+  }
+
   recordBookingCreated(): void {
     this.bookingsCreated++;
   }
