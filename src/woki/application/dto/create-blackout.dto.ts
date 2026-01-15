@@ -5,8 +5,9 @@ export const CreateBlackoutSchema = z.object({
   restaurantId: z.string(),
   sectorId: z.string().optional(), // If provided, can blackout whole sector
   tableIds: z.array(z.string()).optional(), // If empty and sectorId provided = whole sector
-  start: z.string().datetime(),
-  end: z.string().datetime(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD format
+  startTime: z.string().regex(/^\d{2}:\d{2}$/), // HH:mm format in restaurant timezone
+  endTime: z.string().regex(/^\d{2}:\d{2}$/), // HH:mm format in restaurant timezone
   reason: z.nativeEnum(BlackoutReason),
   notes: z.string().optional(),
 });

@@ -104,19 +104,21 @@ describe('BlackoutCommandService', () => {
         restaurantId: 'R1',
         sectorId: 'S1',
         tableIds: ['T1', 'T2'],
-        start: '2025-10-22T20:00:00Z',
-        end: '2025-10-22T22:00:00Z',
+        date: '2025-10-22',
+        startTime: '20:00',
+        endTime: '22:00',
         reason: BlackoutReason.MAINTENANCE,
         notes: 'Table repair',
       };
 
+      // Expected UTC times (Buenos Aires UTC-3: 20:00 local = 23:00 UTC)
       const savedBlackout = {
         id: 'BLK_TEST123',
         restaurantId: 'R1',
         sectorId: 'S1',
         tableIds: ['T1', 'T2'],
-        start: new Date('2025-10-22T20:00:00Z'),
-        end: new Date('2025-10-22T22:00:00Z'),
+        start: new Date('2025-10-22T23:00:00Z'),
+        end: new Date('2025-10-23T01:00:00Z'),
         reason: BlackoutReason.MAINTENANCE,
         notes: 'Table repair',
         createdAt: new Date(),
@@ -139,19 +141,21 @@ describe('BlackoutCommandService', () => {
         restaurantId: 'R1',
         sectorId: 'S1',
         tableIds: [],
-        start: '2025-10-22T20:00:00Z',
-        end: '2025-10-22T23:00:00Z',
+        date: '2025-10-22',
+        startTime: '20:00',
+        endTime: '23:00',
         reason: BlackoutReason.PRIVATE_EVENT,
         notes: 'Private party',
       };
 
+      // Expected UTC times (Buenos Aires UTC-3: 20:00 local = 23:00 UTC, 23:00 local = 02:00 UTC next day)
       const savedBlackout = {
         id: 'BLK_TEST456',
         restaurantId: 'R1',
         sectorId: 'S1',
         tableIds: [],
-        start: new Date('2025-10-22T20:00:00Z'),
-        end: new Date('2025-10-22T23:00:00Z'),
+        start: new Date('2025-10-22T23:00:00Z'),
+        end: new Date('2025-10-23T02:00:00Z'),
         reason: BlackoutReason.PRIVATE_EVENT,
         notes: 'Private party',
         createdAt: new Date(),
@@ -175,8 +179,9 @@ describe('BlackoutCommandService', () => {
         restaurantId: 'R999',
         sectorId: 'S1',
         tableIds: ['T1'],
-        start: '2025-10-22T20:00:00Z',
-        end: '2025-10-22T22:00:00Z',
+        date: '2025-10-22',
+        startTime: '20:00',
+        endTime: '22:00',
         reason: BlackoutReason.MAINTENANCE,
       };
 
@@ -192,8 +197,9 @@ describe('BlackoutCommandService', () => {
         restaurantId: 'R1',
         sectorId: 'S999',
         tableIds: ['T1'],
-        start: '2025-10-22T20:00:00Z',
-        end: '2025-10-22T22:00:00Z',
+        date: '2025-10-22',
+        startTime: '20:00',
+        endTime: '22:00',
         reason: BlackoutReason.MAINTENANCE,
       };
 
@@ -214,8 +220,9 @@ describe('BlackoutCommandService', () => {
         restaurantId: 'R1',
         sectorId: 'S1',
         tableIds: ['T1'],
-        start: '2025-10-22T20:00:00Z',
-        end: '2025-10-22T22:00:00Z',
+        date: '2025-10-22',
+        startTime: '20:00',
+        endTime: '22:00',
         reason: BlackoutReason.MAINTENANCE,
       };
 
@@ -229,8 +236,9 @@ describe('BlackoutCommandService', () => {
         restaurantId: 'R1',
         sectorId: 'S1',
         tableIds: ['T999'], // Non-existent table
-        start: '2025-10-22T20:00:00Z',
-        end: '2025-10-22T22:00:00Z',
+        date: '2025-10-22',
+        startTime: '20:00',
+        endTime: '22:00',
         reason: BlackoutReason.MAINTENANCE,
       };
 
@@ -244,8 +252,9 @@ describe('BlackoutCommandService', () => {
         restaurantId: 'R1',
         sectorId: 'S1',
         tableIds: ['T1'],
-        start: '2025-10-22T22:00:00Z',
-        end: '2025-10-22T20:00:00Z', // End before start
+        date: '2025-10-22',
+        startTime: '22:00',
+        endTime: '20:00', // End before start
         reason: BlackoutReason.MAINTENANCE,
       };
 
@@ -259,8 +268,9 @@ describe('BlackoutCommandService', () => {
         restaurantId: 'R1',
         // sectorId missing
         tableIds: ['T1'],
-        start: '2025-10-22T20:00:00Z',
-        end: '2025-10-22T22:00:00Z',
+        date: '2025-10-22',
+        startTime: '20:00',
+        endTime: '22:00',
         reason: BlackoutReason.MAINTENANCE,
       };
 
@@ -273,8 +283,9 @@ describe('BlackoutCommandService', () => {
       const request = {
         restaurantId: 'R1',
         // sectorId and tableIds both missing
-        start: '2025-10-22T20:00:00Z',
-        end: '2025-10-22T22:00:00Z',
+        date: '2025-10-22',
+        startTime: '20:00',
+        endTime: '22:00',
         reason: BlackoutReason.MAINTENANCE,
       };
 

@@ -98,9 +98,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          // Restaurant is America/Argentina/Buenos_Aires (UTC-3). Local 20:00–22:00 = 23:00Z–01:00Z.
-          start: '2025-10-22T23:00:00Z',
-          end: '2025-10-23T01:00:00Z',
+          date: '2025-10-22',
+          startTime: '20:00',
+          endTime: '22:00',
           reason: 'MAINTENANCE',
           notes: 'Table repair',
         })
@@ -125,9 +125,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: [],
-          // Local 18:00–20:00 = 21:00Z–23:00Z
-          start: '2025-10-22T21:00:00Z',
-          end: '2025-10-22T23:00:00Z',
+          date: '2025-10-22',
+          startTime: '18:00',
+          endTime: '20:00',
           reason: 'PRIVATE_EVENT',
           notes: 'Private party',
         })
@@ -149,9 +149,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1', 'T2', 'T3'],
-          // Local 20:00–22:00 = 23:00Z–01:00Z
-          start: '2025-10-22T23:00:00Z',
-          end: '2025-10-23T01:00:00Z',
+          date: '2025-10-22',
+          startTime: '20:00',
+          endTime: '22:00',
           reason: 'MAINTENANCE',
         })
         .expect(201);
@@ -169,8 +169,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R999',
           sectorId: 'S1',
           tableIds: ['T1'],
-          start: '2025-10-22T20:00:00Z',
-          end: '2025-10-22T22:00:00Z',
+          date: '2025-10-22',
+          startTime: '20:00',
+          endTime: '22:00',
           reason: 'MAINTENANCE',
         })
         .expect(404)
@@ -186,8 +187,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S999',
           tableIds: ['T1'],
-          start: '2025-10-22T20:00:00Z',
-          end: '2025-10-22T22:00:00Z',
+          date: '2025-10-22',
+          startTime: '20:00',
+          endTime: '22:00',
           reason: 'MAINTENANCE',
         })
         .expect(404)
@@ -203,8 +205,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T999'],
-          start: '2025-10-22T20:00:00Z',
-          end: '2025-10-22T22:00:00Z',
+          date: '2025-10-22',
+          startTime: '20:00',
+          endTime: '22:00',
           reason: 'MAINTENANCE',
         })
         .expect(404)
@@ -220,8 +223,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          start: 'invalid-date',
-          end: '2025-10-22T22:00:00Z',
+          date: 'invalid-date',
+          startTime: '20:00',
+          endTime: '22:00',
           reason: 'MAINTENANCE',
         })
         .expect(400);
@@ -234,8 +238,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          start: '2025-10-22T22:00:00Z',
-          end: '2025-10-22T20:00:00Z',
+          date: '2025-10-22',
+          startTime: '22:00',
+          endTime: '20:00',
           reason: 'MAINTENANCE',
         })
         .expect(400);
@@ -248,8 +253,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          start: '2025-10-22T20:00:00Z',
-          end: '2025-10-22T22:00:00Z',
+          date: '2025-10-22',
+          startTime: '20:00',
+          endTime: '22:00',
           reason: 'INVALID_REASON',
         })
         .expect(400);
@@ -265,8 +271,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          start: '2025-10-22T23:00:00Z',
-          end: '2025-10-23T01:00:00Z',
+          date: '2025-10-22',
+          startTime: '20:00',
+          endTime: '22:00',
           reason: 'MAINTENANCE',
         })
         .expect(201);
@@ -334,8 +341,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          start: '2025-10-22T23:00:00Z',
-          end: '2025-10-23T01:00:00Z',
+          date: '2025-10-22',
+          startTime: '20:00',
+          endTime: '22:00',
           reason: 'MAINTENANCE',
         })
         .expect(201);
@@ -379,8 +387,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          start: '2025-10-22T23:00:00Z',
-          end: '2025-10-23T01:00:00Z',
+          date: '2025-10-22',
+          startTime: '20:00',
+          endTime: '22:00',
           reason: 'MAINTENANCE',
         })
         .expect(201);
@@ -415,8 +424,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: [],
-          start: '2025-10-22T23:00:00Z',
-          end: '2025-10-23T01:00:00Z',
+          date: '2025-10-22',
+          startTime: '20:00',
+          endTime: '22:00',
           reason: 'PRIVATE_EVENT',
         })
         .expect(201);
@@ -448,8 +458,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          start: '2025-10-22T23:00:00Z',
-          end: '2025-10-23T01:00:00Z',
+          date: '2025-10-22',
+          startTime: '20:00',
+          endTime: '22:00',
           reason: 'MAINTENANCE',
         })
         .expect(201);
@@ -478,8 +489,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          start: '2025-10-22T23:00:00Z',
-          end: '2025-10-23T01:00:00Z',
+          date: '2025-10-22',
+          startTime: '20:00',
+          endTime: '22:00',
           reason: 'MAINTENANCE',
         })
         .expect(201);
@@ -533,9 +545,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: [bookedTable],
-          // Local 22:00–23:00 = 01:00Z–02:00Z next day
-          start: '2025-10-23T01:00:00Z',
-          end: '2025-10-23T02:00:00Z',
+          date: '2025-10-22',
+          startTime: '22:00',
+          endTime: '23:00',
           reason: 'MAINTENANCE',
         })
         .expect(201);
@@ -549,9 +561,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          // Local 20:00–21:00 = 23:00Z–00:00Z
-          start: '2025-10-22T23:00:00Z',
-          end: '2025-10-23T00:00:00Z',
+          date: '2025-10-22',
+          startTime: '20:00',
+          endTime: '21:00',
           reason: 'MAINTENANCE',
         })
         .expect(201);
@@ -563,9 +575,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          // Local 22:00–23:00 = 01:00Z–02:00Z
-          start: '2025-10-23T01:00:00Z',
-          end: '2025-10-23T02:00:00Z',
+          date: '2025-10-22',
+          startTime: '22:00',
+          endTime: '23:00',
           reason: 'MAINTENANCE',
         })
         .expect(201);

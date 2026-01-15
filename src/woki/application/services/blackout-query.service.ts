@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { parseISO } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { RestaurantRepository as IRestaurantRepository } from '../../ports/repositories/restaurant.repository.interface';
 import { SectorRepository as ISectorRepository } from '../../ports/repositories/sector.repository.interface';
 import { BlackoutRepository as IBlackoutRepository } from '../../ports/repositories/blackout.repository.interface';
@@ -68,14 +69,17 @@ export class BlackoutQueryService {
       restaurant.timezone,
     );
 
+    const formatDateInTimezone = (date: Date) =>
+      formatInTimeZone(date, restaurant.timezone, "yyyy-MM-dd'T'HH:mm:ssXXX");
+
     return {
       date: query.date,
       items: blackouts.map((blackout) => ({
         id: blackout.id,
         sectorId: blackout.sectorId,
         tableIds: blackout.tableIds,
-        start: blackout.start.toISOString(),
-        end: blackout.end.toISOString(),
+        start: formatDateInTimezone(blackout.start),
+        end: formatDateInTimezone(blackout.end),
         reason: blackout.reason,
         notes: blackout.notes,
       })),

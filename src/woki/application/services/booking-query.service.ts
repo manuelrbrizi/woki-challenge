@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { parseISO } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { RestaurantRepository as IRestaurantRepository } from '../../ports/repositories/restaurant.repository.interface';
 import { SectorRepository as ISectorRepository } from '../../ports/repositories/sector.repository.interface';
 import { TableRepository as ITableRepository } from '../../ports/repositories/table.repository.interface';
@@ -146,14 +147,17 @@ export class BookingQueryService {
       ? candidates.slice(0, query.limit)
       : candidates;
 
+    const formatDateInTimezone = (date: Date) =>
+      formatInTimeZone(date, restaurant.timezone, "yyyy-MM-dd'T'HH:mm:ssXXX");
+
     return {
       slotMinutes: 15,
       durationMinutes: query.duration,
       candidates: limitedCandidates.map((c) => ({
         kind: c.kind,
         tableIds: c.tableIds,
-        start: c.interval.start.toISOString(),
-        end: c.interval.end.toISOString(),
+        start: formatDateInTimezone(c.interval.start),
+        end: formatDateInTimezone(c.interval.end),
       })),
     };
   }
@@ -200,14 +204,17 @@ export class BookingQueryService {
       restaurant.timezone,
     );
 
+    const formatDateInTimezone = (date: Date) =>
+      formatInTimeZone(date, restaurant.timezone, "yyyy-MM-dd'T'HH:mm:ssXXX");
+
     return {
       date: query.date,
       items: bookings.map((booking) => ({
         id: booking.id,
         tableIds: booking.tableIds,
         partySize: booking.partySize,
-        start: booking.start.toISOString(),
-        end: booking.end.toISOString(),
+        start: formatDateInTimezone(booking.start),
+        end: formatDateInTimezone(booking.end),
         status: booking.status,
       })),
     };

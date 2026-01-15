@@ -6,6 +6,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { parseISO } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { randomUUID } from 'crypto';
 import { RestaurantRepository as IRestaurantRepository } from '../../ports/repositories/restaurant.repository.interface';
 import { SectorRepository as ISectorRepository } from '../../ports/repositories/sector.repository.interface';
@@ -69,12 +70,6 @@ export class BookingCommandService {
       });
     }
 
-    // Check idempotency (key is now required, so always check)
-    const cached = await this.idempotencyService.get(idempotencyKey, request);
-    if (cached) {
-      return this.toResponse(cached);
-    }
-
     // Parse date
     const date = parseISO(request.date);
     if (isNaN(date.getTime())) {
@@ -84,7 +79,7 @@ export class BookingCommandService {
       });
     }
 
-    // Get restaurant
+    // Get restaurant first (needed for timezone in cached response)
     const restaurant = await this.restaurantRepository.findById(
       request.restaurantId,
     );
@@ -93,6 +88,12 @@ export class BookingCommandService {
         error: 'not_found',
         detail: 'Restaurant not found',
       });
+    }
+
+    // Check idempotency (key is now required, so always check)
+    const cached = await this.idempotencyService.get(idempotencyKey, request);
+    if (cached) {
+      return this.toResponse(cached, restaurant.timezone);
     }
 
     // Get sector
@@ -280,7 +281,7 @@ export class BookingCommandService {
       // Store idempotency key (required, so always store)
       await this.idempotencyService.set(idempotencyKey, savedBooking, request);
 
-      return this.toResponse(savedBooking);
+      return this.toResponse(savedBooking, restaurant.timezone);
     } finally {
       // Release all acquired locks
       for (const lock of acquiredLocks) {
@@ -410,19 +411,25 @@ export class BookingCommandService {
     this.metricsService.recordBookingCancelled();
   }
 
-  private toResponse(booking: Booking): CreateBookingResponse {
+  private toResponse(
+    booking: Booking,
+    timezone: string,
+  ): CreateBookingResponse {
+    const formatDateInTimezone = (date: Date) =>
+      formatInTimeZone(date, timezone, "yyyy-MM-dd'T'HH:mm:ssXXX");
+
     return {
       id: booking.id,
       restaurantId: booking.restaurantId,
       sectorId: booking.sectorId,
       tableIds: booking.tableIds,
       partySize: booking.partySize,
-      start: booking.start.toISOString(),
-      end: booking.end.toISOString(),
+      start: formatDateInTimezone(booking.start),
+      end: formatDateInTimezone(booking.end),
       durationMinutes: booking.durationMinutes,
       status: booking.status,
-      createdAt: booking.createdAt.toISOString(),
-      updatedAt: booking.updatedAt.toISOString(),
+      createdAt: formatDateInTimezone(booking.createdAt),
+      updatedAt: formatDateInTimezone(booking.updatedAt),
     };
   }
 }

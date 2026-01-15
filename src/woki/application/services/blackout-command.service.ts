@@ -5,6 +5,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { parseISO } from 'date-fns';
+import { zonedTimeToUtc, formatInTimeZone } from 'date-fns-tz';
 import { randomUUID } from 'crypto';
 import { RestaurantRepository as IRestaurantRepository } from '../../ports/repositories/restaurant.repository.interface';
 import { SectorRepository as ISectorRepository } from '../../ports/repositories/sector.repository.interface';
@@ -38,19 +39,13 @@ export class BlackoutCommandService {
   async createBlackout(
     request: CreateBlackoutRequest,
   ): Promise<CreateBlackoutResponse> {
-    // Parse dates
-    const start = parseISO(request.start);
-    const end = parseISO(request.end);
-
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    // Parse date
+    const date = parseISO(request.date);
+    if (isNaN(date.getTime())) {
       throw new BadRequestException('Invalid date format');
     }
 
-    if (start >= end) {
-      throw new BadRequestException('Start time must be before end time');
-    }
-
-    // Get restaurant
+    // Get restaurant first (needed for timezone conversion)
     const restaurant = await this.restaurantRepository.findById(
       request.restaurantId,
     );
@@ -59,6 +54,26 @@ export class BlackoutCommandService {
         error: 'not_found',
         detail: 'Restaurant not found',
       });
+    }
+
+    // Parse times in restaurant timezone and convert to UTC
+    const start = this.parseTimeInTimezone(
+      date,
+      request.startTime,
+      restaurant.timezone,
+    );
+    const end = this.parseTimeInTimezone(
+      date,
+      request.endTime,
+      restaurant.timezone,
+    );
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new BadRequestException('Invalid time format');
+    }
+
+    if (start >= end) {
+      throw new BadRequestException('Start time must be before end time');
     }
 
     // Validate sector if provided
@@ -129,7 +144,7 @@ export class BlackoutCommandService {
 
     const savedBlackout = await this.blackoutRepository.create(blackout);
 
-    return this.toResponse(savedBlackout);
+    return this.toResponse(savedBlackout, restaurant.timezone);
   }
 
   async deleteBlackout(id: string): Promise<void> {
@@ -144,18 +159,46 @@ export class BlackoutCommandService {
     await this.blackoutRepository.delete(id);
   }
 
-  private toResponse(blackout: Blackout): CreateBlackoutResponse {
+  /**
+   * Parse a time string (HH:mm) in the restaurant's timezone for a given date,
+   * and convert it to UTC.
+   * This matches the pattern used in the booking API for consistency.
+   */
+  private parseTimeInTimezone(
+    date: Date,
+    timeStr: string,
+    timezone: string,
+  ): Date {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth();
+    const day = date.getUTCDate();
+
+    // Create date string in the format YYYY-MM-DDTHH:mm:00
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+
+    // Parse as if it's in the restaurant timezone, then convert to UTC
+    return zonedTimeToUtc(new Date(dateStr), timezone);
+  }
+
+  private toResponse(
+    blackout: Blackout,
+    timezone: string,
+  ): CreateBlackoutResponse {
+    const formatDateInTimezone = (date: Date) =>
+      formatInTimeZone(date, timezone, "yyyy-MM-dd'T'HH:mm:ssXXX");
+
     return {
       id: blackout.id,
       restaurantId: blackout.restaurantId,
       sectorId: blackout.sectorId,
       tableIds: blackout.tableIds,
-      start: blackout.start.toISOString(),
-      end: blackout.end.toISOString(),
+      start: formatDateInTimezone(blackout.start),
+      end: formatDateInTimezone(blackout.end),
       reason: blackout.reason,
       notes: blackout.notes,
-      createdAt: blackout.createdAt.toISOString(),
-      updatedAt: blackout.updatedAt.toISOString(),
+      createdAt: formatDateInTimezone(blackout.createdAt),
+      updatedAt: formatDateInTimezone(blackout.updatedAt),
     };
   }
 }
