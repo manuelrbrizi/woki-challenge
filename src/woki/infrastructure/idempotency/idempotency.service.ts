@@ -76,4 +76,12 @@ export class IdempotencyService {
   async clear(): Promise<void> {
     await this.repository.deleteAll();
   }
+
+  /**
+   * Nullify the bookingId for all idempotency records referencing a booking.
+   * This is used when a booking is deleted to handle foreign key constraints.
+   */
+  async nullifyBookingId(bookingId: string): Promise<void> {
+    await this.repository.nullifyBookingId(bookingId);
+  }
 }

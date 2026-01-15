@@ -33,4 +33,8 @@ export class IdempotencyRepository implements IIdempotencyRepository {
   async deleteAll(): Promise<void> {
     await this.repository.clear();
   }
+
+  async nullifyBookingId(bookingId: string): Promise<void> {
+    await this.repository.update({ bookingId }, { bookingId: null });
+  }
 }

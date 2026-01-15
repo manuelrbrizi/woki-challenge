@@ -17,7 +17,7 @@ export class Idempotency {
   @Column({ nullable: true })
   bookingId: string | null;
 
-  @ManyToOne(() => Booking, { nullable: true })
+  @ManyToOne(() => Booking, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'bookingId' })
   booking: Booking | null;
 

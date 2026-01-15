@@ -305,15 +305,7 @@ export class WokiController {
     const startTime = Date.now();
 
     try {
-      const booking = await this.bookingRepository.findById(id);
-      if (!booking) {
-        throw new NotFoundException('Booking not found');
-      }
-
-      await this.bookingRepository.delete(id);
-
-      // Record cancellation in metrics
-      this.metricsService.recordBookingCancelled();
+      await this.bookingCommandService.cancelBooking(id);
 
       this.logger.log({
         requestId,

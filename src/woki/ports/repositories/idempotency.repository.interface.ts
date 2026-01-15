@@ -5,4 +5,5 @@ export interface IdempotencyRepository {
   create(idempotency: Idempotency): Promise<Idempotency>;
   deleteExpired(): Promise<void>;
   deleteAll(): Promise<void>; // For testing
+  nullifyBookingId(bookingId: string): Promise<void>;
 }

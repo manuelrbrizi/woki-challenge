@@ -390,6 +390,26 @@ export class BookingCommandService {
     return `${restaurantId}|${sectorId}|${tableId}|${startStr}`;
   }
 
+  async cancelBooking(id: string): Promise<void> {
+    const booking = await this.bookingRepository.findById(id);
+    if (!booking) {
+      throw new NotFoundException({
+        error: 'not_found',
+        detail: 'Booking not found',
+      });
+    }
+
+    // Nullify any idempotency records that reference this booking
+    // This handles the foreign key constraint before deleting the booking
+    await this.idempotencyService.nullifyBookingId(id);
+
+    // Delete the booking
+    await this.bookingRepository.delete(id);
+
+    // Record cancellation in metrics
+    this.metricsService.recordBookingCancelled();
+  }
+
   private toResponse(booking: Booking): CreateBookingResponse {
     return {
       id: booking.id,
