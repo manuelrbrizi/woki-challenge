@@ -400,12 +400,16 @@ export class BookingCommandService {
       });
     }
 
-    // Nullify any idempotency records that reference this booking
-    // This handles the foreign key constraint before deleting the booking
-    await this.idempotencyService.nullifyBookingId(id);
+    // Check if booking is already cancelled
+    if (booking.status === BookingStatus.CANCELLED) {
+      // Already cancelled, no-op
+      return;
+    }
 
-    // Delete the booking
-    await this.bookingRepository.delete(id);
+    // Mark booking as cancelled instead of deleting
+    booking.status = BookingStatus.CANCELLED;
+    booking.updatedAt = new Date();
+    await this.bookingRepository.update(booking);
 
     // Record cancellation in metrics
     this.metricsService.recordBookingCancelled();

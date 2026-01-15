@@ -56,6 +56,7 @@ export class BookingRepository implements IBookingRepository {
         restaurantId,
         sectorId,
         start: Between(dayStart, dayEnd),
+        status: BookingStatus.CONFIRMED,
       },
       order: {
         start: 'ASC',
