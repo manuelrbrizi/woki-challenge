@@ -131,7 +131,7 @@
 					{
 						"key": "Idempotency-Key",
 						"value": "{{$randomUUID}}",
-						"description": "Optional: Ensures idempotent operations (60s TTL)"
+						"description": "Required: Ensures idempotent operations (60s TTL). Must be unique per booking request."
 					}
 				],
 				"body": {
@@ -168,7 +168,8 @@
 					},
 					{
 						"key": "Idempotency-Key",
-						"value": "{{$randomUUID}}"
+						"value": "{{$randomUUID}}",
+						"description": "Required: Ensures idempotent operations (60s TTL)"
 					}
 				],
 				"body": {
@@ -255,6 +256,154 @@
 					]
 				},
 				"description": "Cancel a booking by ID. Returns 204 No Content on success."
+			},
+			"response": []
+		},
+		{
+			"name": "Create Blackout",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"restaurantId\": \"R1\",\n  \"sectorId\": \"S1\",\n  \"tableIds\": [\"T1\", \"T2\"],\n  \"date\": \"2025-10-22\",\n  \"startTime\": \"20:00\",\n  \"endTime\": \"22:00\",\n  \"reason\": \"MAINTENANCE\",\n  \"notes\": \"Table maintenance required\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/woki/blackouts",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"woki",
+						"blackouts"
+					]
+				},
+				"description": "Create a blackout period for specific tables or an entire sector. Blackouts prevent bookings during the specified time period. Reason can be 'MAINTENANCE' or 'PRIVATE_EVENT'."
+			},
+			"response": []
+		},
+		{
+			"name": "Create Blackout (whole sector)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"restaurantId\": \"R1\",\n  \"sectorId\": \"S1\",\n  \"date\": \"2025-10-22\",\n  \"startTime\": \"18:00\",\n  \"endTime\": \"20:00\",\n  \"reason\": \"PRIVATE_EVENT\",\n  \"notes\": \"Private event - entire sector unavailable\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/woki/blackouts",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"woki",
+						"blackouts"
+					]
+				},
+				"description": "Create a blackout for an entire sector by providing sectorId without tableIds (or with empty tableIds array)"
+			},
+			"response": []
+		},
+		{
+			"name": "List Blackouts for Day",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/woki/blackouts?restaurantId=R1&sectorId=S1&date=2025-10-22",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"woki",
+						"blackouts"
+					],
+					"query": [
+						{
+							"key": "restaurantId",
+							"value": "R1",
+							"description": "Restaurant ID"
+						},
+						{
+							"key": "sectorId",
+							"value": "S1",
+							"description": "Sector ID"
+						},
+						{
+							"key": "date",
+							"value": "2025-10-22",
+							"description": "Date in YYYY-MM-DD format"
+						}
+					]
+				},
+				"description": "List all blackouts for a specific restaurant, sector, and date"
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Blackout",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/woki/blackouts/:id",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"woki",
+						"blackouts",
+						":id"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "BL_12345678",
+							"description": "Blackout ID"
+						}
+					]
+				},
+				"description": "Delete a blackout by ID. Returns 204 No Content on success."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Metrics",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/woki/metrics",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"woki",
+						"metrics"
+					]
+				},
+				"description": "Get system metrics including booking statistics, assignment times, and lock information. Returns metrics such as bookings created/cancelled, conflicts, P95 assignment times, and lock wait times."
 			},
 			"response": []
 		},
@@ -354,7 +503,8 @@
 							},
 							{
 								"key": "Idempotency-Key",
-								"value": "test-booking-4-people"
+								"value": "test-booking-4-people",
+								"description": "Required: Ensures idempotent operations (60s TTL)"
 							}
 						],
 						"body": {
