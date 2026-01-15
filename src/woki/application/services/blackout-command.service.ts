@@ -11,12 +11,15 @@ import { RestaurantRepository as IRestaurantRepository } from '../../ports/repos
 import { SectorRepository as ISectorRepository } from '../../ports/repositories/sector.repository.interface';
 import { TableRepository as ITableRepository } from '../../ports/repositories/table.repository.interface';
 import { BlackoutRepository as IBlackoutRepository } from '../../ports/repositories/blackout.repository.interface';
+import { BookingRepository as IBookingRepository } from '../../ports/repositories/booking.repository.interface';
 import {
   RESTAURANT_REPOSITORY,
   SECTOR_REPOSITORY,
   TABLE_REPOSITORY,
   BLACKOUT_REPOSITORY,
+  BOOKING_REPOSITORY,
 } from '../../tokens';
+import { BookingStatus } from '../../domain/types/booking-status.enum';
 import { Blackout } from '../../domain/entities/blackout.entity';
 import {
   CreateBlackoutRequest,
@@ -34,6 +37,8 @@ export class BlackoutCommandService {
     private readonly tableRepository: ITableRepository,
     @Inject(BLACKOUT_REPOSITORY)
     private readonly blackoutRepository: IBlackoutRepository,
+    @Inject(BOOKING_REPOSITORY)
+    private readonly bookingRepository: IBookingRepository,
   ) {}
 
   async createBlackout(
@@ -129,6 +134,22 @@ export class BlackoutCommandService {
       );
     }
 
+    // sectorId should be set at this point (validated above)
+    if (!sectorId) {
+      throw new BadRequestException('sectorId is required');
+    }
+
+    // Find and cancel overlapping bookings
+    const cancelledBookingIds = await this.cancelOverlappingBookings(
+      request.restaurantId,
+      sectorId,
+      date,
+      restaurant.timezone,
+      start,
+      end,
+      tableIds,
+    );
+
     // Create blackout
     const blackout = new Blackout();
     blackout.id = `BLK_${randomUUID().substring(0, 8).toUpperCase()}`;
@@ -144,7 +165,11 @@ export class BlackoutCommandService {
 
     const savedBlackout = await this.blackoutRepository.create(blackout);
 
-    return this.toResponse(savedBlackout, restaurant.timezone);
+    return this.toResponse(
+      savedBlackout,
+      restaurant.timezone,
+      cancelledBookingIds,
+    );
   }
 
   async deleteBlackout(id: string): Promise<void> {
@@ -181,9 +206,75 @@ export class BlackoutCommandService {
     return zonedTimeToUtc(new Date(dateStr), timezone);
   }
 
+  /**
+   * Cancel bookings that overlap with the blackout time period.
+   * A booking overlaps if:
+   * - It's in CONFIRMED status
+   * - It's in the same sector (or affects the same tables)
+   * - The booking time overlaps with the blackout time
+   * - The booking uses tables that are affected by the blackout
+   */
+  private async cancelOverlappingBookings(
+    restaurantId: string,
+    sectorId: string,
+    date: Date,
+    timezone: string,
+    blackoutStart: Date,
+    blackoutEnd: Date,
+    blackoutTableIds: string[],
+  ): Promise<string[]> {
+    // Get all bookings for the date
+    const bookings = await this.bookingRepository.findByDate(
+      restaurantId,
+      sectorId,
+      date,
+      timezone,
+    );
+
+    // Filter to only CONFIRMED bookings that overlap with the blackout
+    const overlappingBookings = bookings.filter((booking) => {
+      // Only cancel CONFIRMED bookings
+      if (booking.status !== BookingStatus.CONFIRMED) {
+        return false;
+      }
+
+      // Check if booking time overlaps with blackout time
+      // Overlap occurs if: booking.start < blackoutEnd && booking.end > blackoutStart
+      const timeOverlaps =
+        booking.start < blackoutEnd && booking.end > blackoutStart;
+
+      if (!timeOverlaps) {
+        return false;
+      }
+
+      // Check if booking uses tables affected by the blackout
+      if (blackoutTableIds.length === 0) {
+        // Whole sector blackout - affects all bookings in the sector
+        return true;
+      } else {
+        // Table-specific blackout - only affects bookings using those tables
+        return booking.tableIds.some((tableId) =>
+          blackoutTableIds.includes(tableId),
+        );
+      }
+    });
+
+    // Cancel all overlapping bookings
+    const cancelledIds: string[] = [];
+    for (const booking of overlappingBookings) {
+      booking.status = BookingStatus.CANCELLED;
+      booking.updatedAt = new Date();
+      await this.bookingRepository.update(booking);
+      cancelledIds.push(booking.id);
+    }
+
+    return cancelledIds;
+  }
+
   private toResponse(
     blackout: Blackout,
     timezone: string,
+    cancelledBookingIds: string[] = [],
   ): CreateBlackoutResponse {
     const formatDateInTimezone = (date: Date) =>
       formatInTimeZone(date, timezone, "yyyy-MM-dd'T'HH:mm:ssXXX");
@@ -199,6 +290,7 @@ export class BlackoutCommandService {
       notes: blackout.notes,
       createdAt: formatDateInTimezone(blackout.createdAt),
       updatedAt: formatDateInTimezone(blackout.updatedAt),
+      cancelledBookingIds,
     };
   }
 }

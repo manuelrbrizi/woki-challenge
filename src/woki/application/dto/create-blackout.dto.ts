@@ -25,4 +25,5 @@ export interface CreateBlackoutResponse {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  cancelledBookingIds: string[];
 }
