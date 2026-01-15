@@ -39,3 +39,10 @@ lerna-debug.log*
 .env
 /ormconfig.json
 .codegpt
+
+woki.db
+woki-test.db
+woki-test-bookings.db
+woki-test-blackouts.db
+woki-test-metrics.db
+woki-test-rate-limiting.db
