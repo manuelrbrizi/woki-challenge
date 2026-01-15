@@ -15,8 +15,8 @@ describe('WokiBrain Blackout API (e2e)', () => {
   let lockManagerService: LockManagerService;
 
   beforeAll(async () => {
-    // Use a separate test database
-    process.env.DATABASE_PATH = 'woki-test.db';
+    // Use a separate test database per test suite to avoid conflicts when running in parallel
+    process.env.DATABASE_PATH = 'woki-test-blackouts.db';
     process.env.DROP_SCHEMA_ON_STARTUP = 'true';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -79,6 +79,15 @@ describe('WokiBrain Blackout API (e2e)', () => {
         // Table might not exist yet, ignore
       }
     }
+
+    // Clean bookings table before each test (keep seeded booking B1)
+    if (dataSource && dataSource.isInitialized) {
+      try {
+        await dataSource.query(`DELETE FROM bookings WHERE id != 'B1'`);
+      } catch {
+        // Table might not exist yet, ignore
+      }
+    }
   });
 
   describe('1. Create Blackout', () => {
@@ -89,8 +98,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          start: '2025-10-22T20:00:00Z',
-          end: '2025-10-22T22:00:00Z',
+          // Restaurant is America/Argentina/Buenos_Aires (UTC-3). Local 20:00–22:00 = 23:00Z–01:00Z.
+          start: '2025-10-22T23:00:00Z',
+          end: '2025-10-23T01:00:00Z',
           reason: 'MAINTENANCE',
           notes: 'Table repair',
         })
@@ -115,8 +125,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: [],
-          start: '2025-10-22T18:00:00Z',
-          end: '2025-10-22T20:00:00Z',
+          // Local 18:00–20:00 = 21:00Z–23:00Z
+          start: '2025-10-22T21:00:00Z',
+          end: '2025-10-22T23:00:00Z',
           reason: 'PRIVATE_EVENT',
           notes: 'Private party',
         })
@@ -138,8 +149,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1', 'T2', 'T3'],
-          start: '2025-10-22T20:00:00Z',
-          end: '2025-10-22T22:00:00Z',
+          // Local 20:00–22:00 = 23:00Z–01:00Z
+          start: '2025-10-22T23:00:00Z',
+          end: '2025-10-23T01:00:00Z',
           reason: 'MAINTENANCE',
         })
         .expect(201);
@@ -253,8 +265,8 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          start: '2025-10-22T20:00:00Z',
-          end: '2025-10-22T22:00:00Z',
+          start: '2025-10-22T23:00:00Z',
+          end: '2025-10-23T01:00:00Z',
           reason: 'MAINTENANCE',
         })
         .expect(201);
@@ -322,8 +334,8 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          start: '2025-10-22T20:00:00Z',
-          end: '2025-10-22T22:00:00Z',
+          start: '2025-10-22T23:00:00Z',
+          end: '2025-10-23T01:00:00Z',
           reason: 'MAINTENANCE',
         })
         .expect(201);
@@ -367,14 +379,16 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          start: '2025-10-22T20:00:00Z',
-          end: '2025-10-22T22:00:00Z',
+          start: '2025-10-22T23:00:00Z',
+          end: '2025-10-23T01:00:00Z',
           reason: 'MAINTENANCE',
         })
         .expect(201);
 
-      // Try to book T1 during the blackout period
-      await request(app.getHttpServer())
+      // Create a booking during the blackout window.
+      // The system should still be able to book (other tables exist),
+      // but it must not assign T1.
+      const bookingRes = await request(app.getHttpServer())
         .post('/api/woki/bookings')
         .set('Idempotency-Key', `test-blackout-t1-${Date.now()}`)
         .send({
@@ -386,10 +400,11 @@ describe('WokiBrain Blackout API (e2e)', () => {
           windowStart: '20:00',
           windowEnd: '22:00',
         })
-        .expect(409)
-        .expect((res) => {
-          expect(res.body.error).toBe('no_capacity');
-        });
+        .expect(201);
+
+      expect(bookingRes.body.tableIds).toBeDefined();
+      expect(Array.isArray(bookingRes.body.tableIds)).toBe(true);
+      expect(bookingRes.body.tableIds).not.toContain('T1');
     });
 
     it('should prevent booking during sector-wide blackout', async () => {
@@ -400,8 +415,8 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: [],
-          start: '2025-10-22T20:00:00Z',
-          end: '2025-10-22T22:00:00Z',
+          start: '2025-10-22T23:00:00Z',
+          end: '2025-10-23T01:00:00Z',
           reason: 'PRIVATE_EVENT',
         })
         .expect(201);
@@ -433,8 +448,8 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          start: '2025-10-22T20:00:00Z',
-          end: '2025-10-22T22:00:00Z',
+          start: '2025-10-22T23:00:00Z',
+          end: '2025-10-23T01:00:00Z',
           reason: 'MAINTENANCE',
         })
         .expect(201);
@@ -463,8 +478,8 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          start: '2025-10-22T20:00:00Z',
-          end: '2025-10-22T22:00:00Z',
+          start: '2025-10-22T23:00:00Z',
+          end: '2025-10-23T01:00:00Z',
           reason: 'MAINTENANCE',
         })
         .expect(201);
@@ -518,8 +533,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: [bookedTable],
-          start: '2025-10-22T22:00:00Z',
-          end: '2025-10-22T23:00:00Z',
+          // Local 22:00–23:00 = 01:00Z–02:00Z next day
+          start: '2025-10-23T01:00:00Z',
+          end: '2025-10-23T02:00:00Z',
           reason: 'MAINTENANCE',
         })
         .expect(201);
@@ -533,8 +549,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          start: '2025-10-22T20:00:00Z',
-          end: '2025-10-22T21:00:00Z',
+          // Local 20:00–21:00 = 23:00Z–00:00Z
+          start: '2025-10-22T23:00:00Z',
+          end: '2025-10-23T00:00:00Z',
           reason: 'MAINTENANCE',
         })
         .expect(201);
@@ -546,8 +563,9 @@ describe('WokiBrain Blackout API (e2e)', () => {
           restaurantId: 'R1',
           sectorId: 'S1',
           tableIds: ['T1'],
-          start: '2025-10-22T22:00:00Z',
-          end: '2025-10-22T23:00:00Z',
+          // Local 22:00–23:00 = 01:00Z–02:00Z
+          start: '2025-10-23T01:00:00Z',
+          end: '2025-10-23T02:00:00Z',
           reason: 'MAINTENANCE',
         })
         .expect(201);

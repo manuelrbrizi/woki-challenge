@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../../src/app.module';
 import { SeedService } from '../../src/woki/infrastructure/persistence/seed.service';
 import { DataSource } from 'typeorm';
 
@@ -9,12 +8,19 @@ describe('Rate Limiting (e2e)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   let seedService: SeedService;
+  const originalEnableRateLimiting = process.env.ENABLE_RATE_LIMITING;
 
   beforeAll(async () => {
-    // Use a separate test database
-    process.env.DATABASE_PATH = 'woki-test.db';
+    // NOTE: The controller's @Throttle config is computed at module import time.
+    // Force production-like limits for this suite (without changing NODE_ENV,
+    // which can affect DB driver selection).
+    process.env.ENABLE_RATE_LIMITING = 'true';
+
+    // Use a separate test database per test suite to avoid conflicts when running in parallel
+    process.env.DATABASE_PATH = 'woki-test-rate-limiting.db';
     process.env.DROP_SCHEMA_ON_STARTUP = 'true';
 
+    const { AppModule } = await import('../../src/app.module');
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -29,6 +35,10 @@ describe('Rate Limiting (e2e)', () => {
     });
 
     await app.init();
+    // IMPORTANT: explicitly listen before firing many concurrent supertest requests.
+    // Otherwise supertest will try to auto-listen per request and race under concurrency,
+    // causing flaky ECONNRESET / serverAddress issues.
+    await app.listen(0, '127.0.0.1');
 
     // Wait for database to be ready
     let retries = 10;
@@ -48,7 +58,13 @@ describe('Rate Limiting (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    // Clean up database
+    if (dataSource?.isInitialized) {
+      await dataSource.dropDatabase();
+      await dataSource.destroy();
+    }
+    await app?.close();
+    process.env.ENABLE_RATE_LIMITING = originalEnableRateLimiting;
   });
 
   describe('GET endpoints rate limiting', () => {
@@ -105,7 +121,8 @@ describe('Rate Limiting (e2e)', () => {
         partySize: 4,
         date: '2025-10-22',
         durationMinutes: 90,
-        windowStart: '19:00',
+        // Must be fully within a seeded service window (20:00–23:45)
+        windowStart: '20:00',
         windowEnd: '22:00',
       };
 
@@ -131,7 +148,8 @@ describe('Rate Limiting (e2e)', () => {
         partySize: 4,
         date: '2025-10-22',
         durationMinutes: 90,
-        windowStart: '19:00',
+        // Must be fully within a seeded service window (20:00–23:45)
+        windowStart: '20:00',
         windowEnd: '22:00',
       };
 
@@ -167,7 +185,8 @@ describe('Rate Limiting (e2e)', () => {
         partySize: 2,
         date: '2025-10-22',
         durationMinutes: 60,
-        windowStart: '19:00',
+        // Must be fully within a seeded service window (20:00–23:45)
+        windowStart: '20:00',
         windowEnd: '22:00',
       };
 

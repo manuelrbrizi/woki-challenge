@@ -18,8 +18,8 @@ describe('WokiBrain Booking API (e2e)', () => {
   let lockManagerService: LockManagerService;
 
   beforeAll(async () => {
-    // Use a separate test database
-    process.env.DATABASE_PATH = 'woki-test.db';
+    // Use a separate test database per test suite to avoid conflicts when running in parallel
+    process.env.DATABASE_PATH = 'woki-test-bookings.db';
     process.env.DROP_SCHEMA_ON_STARTUP = 'true';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({

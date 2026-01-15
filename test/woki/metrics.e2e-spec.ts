@@ -6,6 +6,7 @@ import { SeedService } from '../../src/woki/infrastructure/persistence/seed.serv
 import { DataSource } from 'typeorm';
 import { IdempotencyService } from '../../src/woki/infrastructure/idempotency/idempotency.service';
 import { LockManagerService } from '../../src/woki/infrastructure/locking/lock-manager.service';
+import { MetricsService } from '../../src/woki/infrastructure/metrics/metrics.service';
 
 describe('WokiBrain Metrics API (e2e)', () => {
   let app: INestApplication;
@@ -13,10 +14,11 @@ describe('WokiBrain Metrics API (e2e)', () => {
   let seedService: SeedService;
   let idempotencyService: IdempotencyService;
   let lockManagerService: LockManagerService;
+  let metricsService: MetricsService;
 
   beforeAll(async () => {
-    // Use a separate test database
-    process.env.DATABASE_PATH = 'woki-test.db';
+    // Use a separate test database per test suite to avoid conflicts when running in parallel
+    process.env.DATABASE_PATH = 'woki-test-metrics.db';
     process.env.DROP_SCHEMA_ON_STARTUP = 'true';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -30,6 +32,7 @@ describe('WokiBrain Metrics API (e2e)', () => {
       moduleFixture.get<IdempotencyService>(IdempotencyService);
     lockManagerService =
       moduleFixture.get<LockManagerService>(LockManagerService);
+    metricsService = moduleFixture.get<MetricsService>(MetricsService);
 
     // Set global prefix to match production
     app.setGlobalPrefix('api', {
@@ -70,6 +73,7 @@ describe('WokiBrain Metrics API (e2e)', () => {
     // Clear in-memory services between tests
     await idempotencyService.clear();
     lockManagerService.clear();
+    metricsService.reset();
 
     // Clean bookings table before each test
     if (dataSource && dataSource.isInitialized) {
@@ -221,8 +225,14 @@ describe('WokiBrain Metrics API (e2e)', () => {
     });
 
     it('should calculate P95 when sufficient samples exist', async () => {
-      // Create 20 bookings to meet P95 threshold
+      // Create 20 bookings to meet P95 threshold.
+      // Note: candidate selection for a single date can cap out quickly because the engine
+      // prioritizes earliest availability; vary the date to reliably generate samples.
       for (let i = 0; i < 20; i++) {
+        const date = new Date(Date.UTC(2025, 9, 1 + i)) // 2025-10-01 + i days
+          .toISOString()
+          .slice(0, 10);
+
         await request(app.getHttpServer())
           .post('/api/woki/bookings')
           .set('Idempotency-Key', `test-metrics-p95-${i}-${Date.now()}`)
@@ -230,8 +240,10 @@ describe('WokiBrain Metrics API (e2e)', () => {
             restaurantId: 'R1',
             sectorId: 'S1',
             partySize: 2,
-            durationMinutes: 60,
-            date: '2025-10-22',
+            // Use a shorter duration to reliably fit many bookings in the window
+            // (this test is about having >= 20 timing samples, not 60-minute slots).
+            durationMinutes: 15,
+            date,
             windowStart: '12:00',
             windowEnd: '16:00',
           })
