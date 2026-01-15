@@ -181,7 +181,7 @@ export class GapDiscoveryService {
     const month = date.getUTCMonth();
     const day = date.getUTCDate();
 
-    // If specific window provided, use it
+    // If both windowStart and windowEnd provided, use them
     if (windowStart && windowEnd) {
       const start = this.parseTimeInTimezone(
         year,
@@ -200,10 +200,10 @@ export class GapDiscoveryService {
       return [{ start, end }];
     }
 
-    // Otherwise use restaurant service windows
+    // Get base service windows (or full day if none)
+    let baseWindows: TimeInterval[];
     if (!serviceWindows || serviceWindows.length === 0) {
       // Full day if no windows specified
-      // Create a full day window: 00:00 to 24:00 in restaurant's timezone
       const start = this.parseTimeInTimezone(
         year,
         month,
@@ -212,13 +212,56 @@ export class GapDiscoveryService {
         timezone,
       );
       const end = this.parseTimeInTimezone(year, month, day, '24:00', timezone);
-      return [{ start, end }];
+      baseWindows = [{ start, end }];
+    } else {
+      baseWindows = serviceWindows.map((window) => ({
+        start: this.parseTimeInTimezone(
+          year,
+          month,
+          day,
+          window.start,
+          timezone,
+        ),
+        end: this.parseTimeInTimezone(year, month, day, window.end, timezone),
+      }));
     }
 
-    return serviceWindows.map((window) => ({
-      start: this.parseTimeInTimezone(year, month, day, window.start, timezone),
-      end: this.parseTimeInTimezone(year, month, day, window.end, timezone),
-    }));
+    // Filter by partial window parameters if provided
+    if (windowStart) {
+      const minStart = this.parseTimeInTimezone(
+        year,
+        month,
+        day,
+        windowStart,
+        timezone,
+      );
+      // Filter to only include windows that start at or after windowStart
+      baseWindows = baseWindows
+        .filter((window) => window.end > minStart)
+        .map((window) => ({
+          start: window.start > minStart ? window.start : minStart,
+          end: window.end,
+        }));
+    }
+
+    if (windowEnd) {
+      const maxEnd = this.parseTimeInTimezone(
+        year,
+        month,
+        day,
+        windowEnd,
+        timezone,
+      );
+      // Filter to only include windows that end at or before windowEnd
+      baseWindows = baseWindows
+        .filter((window) => window.start < maxEnd)
+        .map((window) => ({
+          start: window.start,
+          end: window.end < maxEnd ? window.end : maxEnd,
+        }));
+    }
+
+    return baseWindows;
   }
 
   private parseTimeInTimezone(
