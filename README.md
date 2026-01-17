@@ -2,6 +2,111 @@
 
 A compact booking engine for restaurants that discovers **when** and **how** to seat a party using **single tables or table combinations**.
 
+## Table of Contents
+- [Setup & Installation](#setup--installation)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Database](#database)
+  - [Postman Collection](#postman-collection)
+- [Testing](#testing)
+  - [Running Tests](#running-tests)
+- [Features](#features)
+  - [Core Challenge Features](#core-challenge-features)
+  - [Optional Extensions](#optional-extensions)
+- [Assumptions](#assumptions)
+  - [Domain Assumptions](#domain-assumptions)
+  - [Technical Assumptions](#technical-assumptions)
+- [Architecture Decisions](#architecture-decisions)
+  - [Hexagonal Architecture](#hexagonal-architecture)
+  - [Service Windows in Separate Table](#service-windows-in-separate-table)
+- [Gap Discovery & Candidate Generation](#gap-discovery--candidate-generation)
+  - [Gap Discovery Algorithm](#gap-discovery-algorithm)
+  - [Combo Generation](#combo-generation)
+- [WokiBrain Selection Strategy](#wokibrain-selection-strategy)
+- [Time Model & Constraints](#time-model--constraints)
+- [API Endpoints & Design Choices](#api-endpoints--design-choices)
+  - [Core Endpoints](#core-endpoints)
+  - [Optional Extension Endpoints](#optional-extension-endpoints)
+- [Concurrency & Idempotency](#concurrency--idempotency)
+  - [Atomic Create + Locking](#atomic-create--locking)
+  - [Idempotency Semantics](#idempotency-semantics)
+- [Metrics & Observability (Optional Extension)](#metrics--observability-optional-extension)
+- [Rate Limiting (Optional Extension)](#rate-limiting-optional-extension)
+- [Validation & Error Handling](#validation--error-handling)
+- [Trade-offs & Justifications](#trade-offs--justifications)
+- [Complexity Analysis](#complexity-analysis)
+  - [Combo Generation Complexity](#combo-generation-complexity)
+  - [Gap Discovery Complexity](#gap-discovery-complexity)
+  - [Overall System Complexity](#overall-system-complexity)
+- [Failure Modes & Edge Cases](#failure-modes--edge-cases)
+- [Additional Resources](#additional-resources)
+- [License](#license)
+
+
+
+## Setup & Installation
+
+### Prerequisites
+
+- Node.js >= 16.0.0
+- npm >= 8.0.0
+
+### Installation
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Create a `.env` file (optional, defaults are provided):
+```env
+APP_PORT=3000
+API_PREFIX=api
+NODE_ENV=development
+DATABASE_TYPE=better-sqlite3
+DATABASE_PATH=woki.db
+DATABASE_SYNCHRONIZE=true
+DROP_SCHEMA_ON_STARTUP=true
+```
+
+3. Start the application:
+```bash
+npm run start:dev
+```
+
+The application will:
+- Create a fresh SQLite database on each startup (if `DROP_SCHEMA_ON_STARTUP=true`)
+- Seed example data (restaurant R1, sector S1, 5 tables, 1 existing booking)
+- Start the server on port 3000 (or the port specified in `.env`)
+
+### Database
+
+The application uses **SQLite** with TypeORM. The database file (`woki.db`) is created in the project root. On each startup (with `DROP_SCHEMA_ON_STARTUP=true`), the schema is dropped and recreated with fresh seed data.
+
+### Postman Collection
+
+A Postman collection is available at `WokiBrain.postman_collection.json` with pre-configured requests for all endpoints.
+
+## Testing
+
+### Running Tests
+
+**Unit tests**:
+```bash
+npm run test:unit
+```
+
+**E2E tests**:
+```bash
+npm run test:e2e
+```
+
+**All tests**:
+```bash
+npm test
+```
+
+
 ## Features
 
 ### Core Challenge Features
@@ -352,68 +457,6 @@ Query parameters:
 ```
 
 **Note**: Metrics are in-memory and reset on application restart. This is an optional extension.
-
-## Setup & Installation
-
-### Prerequisites
-
-- Node.js >= 16.0.0
-- npm >= 8.0.0
-
-### Installation
-
-1. Install dependencies:
-```bash
-npm install
-```
-
-2. Create a `.env` file (optional, defaults are provided):
-```env
-APP_PORT=3000
-API_PREFIX=api
-NODE_ENV=development
-DATABASE_TYPE=better-sqlite3
-DATABASE_PATH=woki.db
-DATABASE_SYNCHRONIZE=true
-DROP_SCHEMA_ON_STARTUP=true
-```
-
-3. Start the application:
-```bash
-npm run start:dev
-```
-
-The application will:
-- Create a fresh SQLite database on each startup (if `DROP_SCHEMA_ON_STARTUP=true`)
-- Seed example data (restaurant R1, sector S1, 5 tables, 1 existing booking)
-- Start the server on port 3000 (or the port specified in `.env`)
-
-### Database
-
-The application uses **SQLite** with TypeORM. The database file (`woki.db`) is created in the project root. On each startup (with `DROP_SCHEMA_ON_STARTUP=true`), the schema is dropped and recreated with fresh seed data.
-
-### Postman Collection
-
-A Postman collection is available at `WokiBrain.postman_collection.json` with pre-configured requests for all endpoints.
-
-## Testing
-
-### Running Tests
-
-**Unit tests**:
-```bash
-npm run test:unit
-```
-
-**E2E tests**:
-```bash
-npm run test:e2e
-```
-
-**All tests**:
-```bash
-npm test
-```
 
 ## Concurrency & Idempotency
 
